@@ -1,0 +1,4 @@
+/venv/
+/Dataset/RGB/*
+/Dataset/Depth/*
+/Utils/TestImage.png
