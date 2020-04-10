@@ -8,7 +8,7 @@ import Utils.FaceAlignmentNetwork as fan
 import Utils.CropAndResize as car
 
 # init part
-eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
+eye_cascade = cv2.CascadeClassifier('Utils/haarcascade_eye.xml')
 detector_params = cv2.SimpleBlobDetector_Params()
 detector_params.filterByArea = True
 detector_params.maxArea = 1500
@@ -71,27 +71,37 @@ def eyeTracking(image):
 
     left_eye, right_eye, left_eye_offset_x, left_eye_offset_y, right_eye_offset_x, right_eye_offset_y = detect_eyes(image, eye_cascade)
 
-    threshold = 50
+
 
     if len(left_eye) > 1:
         eye, offsetY = cut_eyebrows(left_eye)
         left_eye_offset_y += offsetY
-        keypoints = blob_process(eye, threshold, detector)
-        keypoint = cv2.KeyPoint_convert(keypoints)
-        if len(keypoint) > 0:
-            landmarks[0] = keypoint[0]
-            landmarks[0][0] += left_eye_offset_x
-            landmarks[0][1] += left_eye_offset_y
+
+        threshold = 20
+        while True:
+            keypoints = blob_process(eye, threshold, detector)
+            keypoint = cv2.KeyPoint_convert(keypoints)
+            if len(keypoint) > 0:
+                landmarks[0] = keypoint[0]
+                landmarks[0][0] += left_eye_offset_x
+                landmarks[0][1] += left_eye_offset_y
+                break
+            threshold += 5;
 
     if len(right_eye) > 1:
         eye, offsetY = cut_eyebrows(right_eye)
         right_eye_offset_y += offsetY
-        keypoints = blob_process(eye, threshold, detector)
-        keypoint = cv2.KeyPoint_convert(keypoints)
-        if len(keypoint) > 0:
-            landmarks[1] = keypoint[0]
-            landmarks[1][0] += right_eye_offset_x
-            landmarks[1][1] += right_eye_offset_y
+
+        threshold = 20
+        while True:
+            keypoints = blob_process(eye, threshold, detector)
+            keypoint = cv2.KeyPoint_convert(keypoints)
+            if len(keypoint) > 0:
+                landmarks[1] = keypoint[0]
+                landmarks[1][0] += right_eye_offset_x
+                landmarks[1][1] += right_eye_offset_y
+                break
+            threshold += 5;
 
     return landmarks
 
