@@ -12,6 +12,7 @@ import Utils.FaceAlignmentNetwork as fan
 import Utils.EyeTracking as et
 import Utils.HeatmapDrawing as hd
 import Utils.CropAndResize as car
+import Utils.Visualization as vis
 
 class RGBDFaceDataset(Dataset):
 
@@ -141,14 +142,4 @@ if __name__ == '__main__':
 
     for i in range(0, len(rgbdFaceDataset)):
         sample = rgbdFaceDataset[i]
-
-        compl = np.zeros([3, 256, 512])
-        compl[:, :, 0:256] = sample['RGBD'][0:3, :, :]
-        compl[:, :, 256:512] = sample['Heatmap'][0:3, :, :]
-
-        compl = compl.transpose(1, 2, 0)
-        compl = compl * 127.5 + 127.5
-        compl = compl.astype('uint8')
-
-        im = Image.fromarray(compl)
-        im.save("Dataset/Visualization/" + str(i) + ".png")
+        vis.exportExample(sample['RGBD'], sample['Heatmap'], "Dataset/Visualization/" + str(i) + ".png")

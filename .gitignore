@@ -3,3 +3,6 @@
 /Dataset/Depth/*
 /Dataset/Visualization/*
 /Utils/TestImage.png
+/Result/trainedGenerator.pth
+/Result/tracedGenerator.zip
+/Result/example.png
