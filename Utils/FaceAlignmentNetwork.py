@@ -7,7 +7,7 @@ import torch
 
 def create2DLandmarks(imageTensor, show=False):
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False, device=device)
 
     input = imageTensor.detach().numpy()
