@@ -61,7 +61,7 @@ def blob_process(img, threshold, detector):
     keypoints = detector.detect(img)
     #plt.imshow(img)
     #plt.show()
-    print(keypoints)
+    #print(keypoints) # Sign for eyes found
     return keypoints
 
 
@@ -87,6 +87,8 @@ def eyeTracking(image):
                 landmarks[0][1] += left_eye_offset_y
                 break
             threshold += 5;
+            if threshold > 100:
+                break
 
     if len(right_eye) > 1:
         eye, offsetY = cut_eyebrows(right_eye)
@@ -102,6 +104,8 @@ def eyeTracking(image):
                 landmarks[1][1] += right_eye_offset_y
                 break
             threshold += 5;
+            if threshold > 100:
+                break
 
     return landmarks
 

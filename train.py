@@ -14,10 +14,10 @@ if __name__ == '__main__':
     ### Define Networks ###
 
     netG = pix2pixG.UnetGenerator(input_nc=4, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=True)
-    netG = pix2pixInit.init_net(netG)
+    netG = pix2pixInit.init_net(netG, gpu_ids=[0])
 
     netD = pix2pixD.NLayerDiscriminator(input_nc=8, ndf=64, n_layers=3, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True))
-    netD = pix2pixInit.init_net(netD)
+    netD = pix2pixInit.init_net(netD, gpu_ids=[0])
 
     ### Training settings ###
 
@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
         noise = torch.randn(heatmap.shape)
         traced = torch.jit.trace(netG.eval(), noise)
-        netG.train()
+        netG.train().to(device)
         traced.save('Result/tracedGenerator.zip')
         #print("LoadModel")
         #loaded = torch.jit.load('trainedGenerator.zip')
