@@ -1,6 +1,6 @@
 # RGBD-Face-Avatar-GAN
 
-This repository based on my bachelorthesis at HS-Düsseldorf and was supported by [MIREVI](www.mirevi.de). 
+This repository based on my bachelorthesis at HS-Düsseldorf and was supported by [MIREVI](https://mirevi.de). 
 
 The basic GAN architecture is the [Pix2Pix-GAN by Isola et al.](https://phillipi.github.io/pix2pix/). 
 Some basic code parts came from or are based on their [Pix2Pix-Pytorch-implementation](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
@@ -31,3 +31,13 @@ Ths is not necessary for training and only for debug.
 ## Training
 
 Run `train.py`.
+
+## Test
+
+Run `test.py` in order to test the model with a webcam. The window that opens shows: 
+
+| webcam | landmarks | synthesized RGB face | synthesized depthmap |
+|---|---|---|---|
+
+
+
