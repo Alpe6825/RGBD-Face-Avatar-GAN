@@ -23,13 +23,14 @@ if __name__ == '__main__':
     netG = pix2pixInit.init_net(netG)
 
     netG.load_state_dict(torch.load("Result/trainedGenerator.pth"))
-    netG.eval()
+    netG.eval().to(device)
 
-    cap = cv2.VideoCapture("Utils/Testvideo.mp4") # 0 for webcam or path to video
+    cap = cv2.VideoCapture(0) # 0 for webcam or path to video
 
     while (True):
         # Capture frame-by-frame
         _, frame = cap.read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         landmarks_temp = fan.create2DLandmarks(torch.Tensor(frame))
         #imageRGBD = car.cropAndResizeImageLandmarkBased(imageRGBD, 256, landmarks_temp, computeLandmarksAgain=False)
@@ -55,6 +56,7 @@ if __name__ == '__main__':
         output = output.astype('uint8')
 
         # Display the resulting frame
+        output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
         cv2.imshow('Window', output)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
