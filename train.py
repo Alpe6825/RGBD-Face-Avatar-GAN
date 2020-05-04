@@ -8,6 +8,7 @@ import functools
 import Dataset.RGBDFaceDataset as rgbdDataset
 import Utils.Visualization as Vis
 from tqdm import tqdm
+from os import path
 
 if __name__ == '__main__':
 
@@ -19,6 +20,19 @@ if __name__ == '__main__':
     netD = pix2pixD.NLayerDiscriminator(input_nc=8, ndf=64, n_layers=3, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True))
     netD = pix2pixInit.init_net(netD, gpu_ids=[0])
 
+    ### Load Exsting Model State ###
+
+    if path.exists("Result/trainedGenerator.pth") and path.exists("Result/trainedDiscriminator.pth"):
+
+        netG.load_state_dict(torch.load("Result/trainedGenerator.pth"))
+        netD.load_state_dict(torch.load("Result/trainedDiscriminator.pth"))
+
+        startEpoch = int(input('Enter startEpoch:'))
+        print('startEpoch:', startEpoch, type(startEpoch))
+
+    else:
+        startEpoch = 1
+
     ### Training settings ###
 
     learningRate = 0.0002
@@ -27,17 +41,21 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     criterionGAN = pix2pixLoss.GANLoss("vanilla").to(device)
     criterionL1 = torch.nn.L1Loss()
-    #TODO: schedulers <BaseModel.setup>.
+
     optimizer_G = torch.optim.Adam(netG.parameters(), lr=learningRate, betas=(0.5, 0.999))
     optimizer_D = torch.optim.Adam(netD.parameters(), lr=learningRate, betas=(0.5, 0.999))
+
+    lambda_rule = lambda epoch: 1.0 - max(0, epoch + startEpoch - 100) / float(100 + 1)
+    scheduler_G = torch.optim.lr_scheduler.LambdaLR(optimizer_G, lr_lambda=lambda_rule)
+    scheduler_D = torch.optim.lr_scheduler.LambdaLR(optimizer_D, lr_lambda=lambda_rule)
 
     ### Training ###
 
     dataset = rgbdDataset.RGBDFaceDataset(imageSize=256, path="Dataset/")
     dataset = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
-    for epoch in range(1, 200 + 1):
-        print("Epoche: ", epoch)
+    for epoch in range(startEpoch, 200 + 1):
+        print("Epoche: ", epoch, "(LearningRates:", scheduler_G.get_last_lr(), scheduler_D.get_last_lr(),")")
         for i, data in enumerate(tqdm(dataset)):
 
             heatmap = data['Heatmap'].to(device)
@@ -80,9 +98,15 @@ if __name__ == '__main__':
             loss_G.backward()
             optimizer_G.step()  # udpate G's weights
 
+        ### Learning Rate Schedular
+
+        scheduler_G.step()
+        scheduler_D.step()
+
         ### Save Modell ###
 
         torch.save(netG.cpu().state_dict(), "Result/trainedGenerator.pth")
+        torch.save(netD.cpu().state_dict(), "Result/trainedDiscriminator.pth")
 
         ### Trace Modell ###
 

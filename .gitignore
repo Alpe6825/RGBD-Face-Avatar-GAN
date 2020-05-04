@@ -1,8 +1,14 @@
 /venv/
 /Dataset/RGB/*
+!/Dataset/RGB/README.md
 /Dataset/Depth/*
+!/Dataset/Depth/README.md
 /Dataset/Visualization/*
+!/Dataset/Visualization/README.md
 /Utils/TestImage.png
+/Utils/Testvideo.mp4
 /Result/trainedGenerator.pth
+/Result/trainedDiscriminator.pth
 /Result/tracedGenerator.zip
+/Result/tracedGenerator.onnx
 /Result/example.png

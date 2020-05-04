@@ -25,7 +25,7 @@ Put the rgb images under "Dataset/RGB/" and the depth images under "Dataset/Dept
 
 A tool for creating the dataset automatical with an rgbd-camera is still under construction.
 
-If you run `RGBDfaceDataset.py`, folder "Visualization" contains the complete dataset in a visible form. 
+If you run `RGBDfaceDataset.py`, the folder "Visualization" contains the complete dataset in a visible form. 
 Ths is not necessary for training and only for debug.
 
 ## Training
