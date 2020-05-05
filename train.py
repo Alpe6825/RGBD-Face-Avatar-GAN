@@ -113,6 +113,7 @@ if __name__ == '__main__':
         noise = torch.randn(heatmap.shape)
         traced = torch.jit.trace(netG.eval(), noise)
         netG.train().to(device)
+        netD.train().to(device)
         traced.save('Result/tracedGenerator.zip')
         #print("LoadModel")
         #loaded = torch.jit.load('trainedGenerator.zip')
