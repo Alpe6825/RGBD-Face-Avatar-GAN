@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 from PIL import Image
 import cv2
+import pandas as pd
 
 import Utils.FaceAlignmentNetwork as fan
 import Utils.EyeTracking as et
@@ -35,20 +36,20 @@ class RGBDFaceDataset(Dataset):
         self.imageSize = imageSize
 
         ### Depth Histrogramm skalieren
-        max = 0
-        min = 65535
+        _max = 0
+        _min = 65535
         print("Compute DepthScale:")
         for file in tqdm(self.depth16_files):
             imageDepth16 = o3d.io.read_image(self.path_depth16 + file)
             tempMax = np.asarray(imageDepth16).max()
             tempMin = np.asarray(imageDepth16).min()
-            if max < tempMax:
-                max = tempMax
-            if min > tempMin:
-                min = tempMin
+            if _max < tempMax:
+                _max = tempMax
+            if _min > tempMin:
+                _min = tempMin
 
-        self.depthScale = 65535 / max
-        print("DepthRange in Dataset:", min, max, "Depthscale for 16bit:", self.depthScale)
+        self.depthScale = 65535 / _max
+        print("DepthRange in Dataset:", _min, _max, "Depthscale for 16bit:", self.depthScale)
 
         self.landmarks = np.ndarray([len(self.rgb8_files), 68 + 2, 2])
 
@@ -71,6 +72,17 @@ class RGBDFaceDataset(Dataset):
 
             np.savetxt(path + 'Landmarks.txt', self.landmarks.reshape(-1))
             print("Landmarks saved as " + path + "/Landmarks.txt")
+
+            landmarkControl = np.ndarray([68 + 2, 4])
+
+            for i in range(0, 70):
+                landmarkControl[i, 0] = min(self.landmarks[:, i, 0])
+                landmarkControl[i, 2] = max(self.landmarks[:, i, 0])
+                landmarkControl[i, 1] = min(self.landmarks[:, i, 1])
+                landmarkControl[i, 3] = max(self.landmarks[:, i, 1])
+
+            pd.DataFrame(landmarkControl, columns=["x_min", "y_min", "x_max", "y_max"]).to_csv(
+                path + 'LandmarkControl.csv')
 
     def __len__(self):
         return len(self.rgb8_files)
