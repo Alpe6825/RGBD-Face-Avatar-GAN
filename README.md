@@ -9,7 +9,7 @@ Some basic code parts came from or are based on their [Pix2Pix-Pytorch-implement
 
 - Python 3.6 or 3.7 
 - numpy
-- PyTorch 1.4 (with Cuda 10.1)
+- PyTorch >1.4 (with Cuda >10.1)
 - Torchvision 0.5
 - Open3D
 - OpenCV 4
@@ -39,5 +39,21 @@ Run `test.py` in order to test the model with a webcam. The window that opens sh
 | webcam | landmarks | synthesized RGB face | synthesized depthmap |
 |---|---|---|---|
 
+### Facial Landmark Controller
 
+The Facial Landmark Controller offers the possibility to apply the relative input movement to an 
+facial landmark set from the dataset. This improves the result if the avatar of one person is 
+controlled by another person or the landmarks come from different sources and have to be put 
+together. 
 
+**How to use the Facial Landmark Controller:**
+1. Press `Load Profil` to load all facial landmarks to the Facial Landmark Controller. <br/><br/><small>(The folder 
+`Dataset` has to contain `Landmark.txt` in which all landmarks are stored. This file will be 
+created at the begin of the training. If this file doesn't exist run `Dataset/RGBDFaceDataset.py` 
+from the root directory.)</small><br/><br/>
+2. Choose a suitable facial landmark set with the slider on the right. <br/><br/>
+3. Try to imitate the chosen facial expression as well as possible.<br/><br/>
+4. Press `Start Matching`. The relative* input movement will now apply to the the chosen facial 
+landmark set and the resulted heatmap will send to the GAN.   
+
+*(relative to the face expression when the button is pressed)

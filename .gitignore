@@ -5,8 +5,12 @@
 !/Dataset/Depth/README.md
 /Dataset/Visualization/*
 !/Dataset/Visualization/README.md
+/Dataset/LandmarkControl.csv
+/Dataset/Landmarks.txt
+
 /Utils/TestImage.png
 /Utils/Testvideo.mp4
+
 /Result/trainedGenerator.pth
 /Result/trainedDiscriminator.pth
 /Result/tracedGenerator.zip
