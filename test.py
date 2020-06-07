@@ -1,3 +1,4 @@
+#Last edit 07.06.2020
 import torch
 import torch.nn as nn
 import Pix2PixGAN.Generator as pix2pixG
@@ -8,6 +9,7 @@ import Utils.FaceAlignmentNetwork as fan
 import Utils.CropAndResize as car
 import Utils.EyeTracking as et
 import Utils.Visualization as vis
+import Utils.FacialLandmarkControl as FacialLandmarkControl
 import cv2
 import numpy as np
 import Utils.HeatmapDrawing as hd
@@ -19,11 +21,12 @@ if __name__ == '__main__':
 
     imageSize = 256
     landmarkControl = False
+    flc = FacialLandmarkControl.FacialLandmarkController()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     ### Define Networks ###
 
-    netG = pix2pixG.UnetGenerator(input_nc=4, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=True)
+    netG = pix2pixG.UnetGenerator(input_nc=4, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=False)
     netG = pix2pixInit.init_net(netG)
 
     ### ONNX ####
@@ -58,7 +61,7 @@ if __name__ == '__main__':
         cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
     print("Camera ID:",camID)
 
-    df = pd.read_csv("Result/LandmarkControl.csv")
+    df = pd.read_csv("Dataset/LandmarkControl.csv")
     lanmarkCrontrolVis = np.ndarray([imageSize,imageSize,3])
 
     if landmarkControl == True:
@@ -79,8 +82,10 @@ if __name__ == '__main__':
         try:
             landmarks_temp = fan.create2DLandmarks(torch.Tensor(frame))
             #imageRGBD = car.cropAndResizeImageLandmarkBased(imageRGBD, 256, landmarks_temp, computeLandmarksAgain=False)
-            image, landmarks = car.cropAndResizeImageLandmarkBased(frame, imageSize, landmarks_temp)
+            image, landmarks = car.cropAndResizeImageLandmarkBased(frame, imageSize, landmarks_temp, useCropBuffer=False)
             landmarks = np.concatenate((landmarks, et.eyeTracking(image[:, :, 0:3].astype("uint8"))), axis=0)
+
+            landmarks = flc(landmarks)
 
             if landmarkControl == True:
                 for i in range(0,70):
