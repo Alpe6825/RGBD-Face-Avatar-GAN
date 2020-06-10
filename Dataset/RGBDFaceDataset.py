@@ -4,6 +4,7 @@ import open3d as o3d
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset, DataLoader
+import torchvision
 from tqdm import tqdm
 from PIL import Image
 import cv2
@@ -34,6 +35,8 @@ class RGBDFaceDataset(Dataset):
             exit()
 
         self.imageSize = imageSize
+        self.transforms = torchvision.transforms.Compose([torchvision.transforms.RandomAffine((-5,5), translate=(0.02,0.02), scale=(0.98,1), shear=None, resample=False,
+                                            fillcolor=0),torchvision.transforms.ToTensor()])
 
         ### Depth Histrogramm skalieren
         _max = 0
@@ -139,12 +142,13 @@ class RGBDFaceDataset(Dataset):
         imageRGBD = imageRGBD.transpose(2, 0, 1)
         imageRGBD = torch.Tensor(imageRGBD)
 
-        fourChannelHeatmap = hd.drawHeatmap(self.landmarks[idx], self.imageSize)
-        fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
+        fourChannelHeatmap_PIL = hd.drawHeatmap(self.landmarks[idx], self.imageSize,returnType="PIL")
 
+        fourChannelHeatmap = self.transforms(fourChannelHeatmap_PIL)
+        fourChannelHeatmap = fourChannelHeatmap*2-1
+        #fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
 
         sample = {'RGBD': imageRGBD, 'Heatmap': fourChannelHeatmap}
-
         return sample
 
 

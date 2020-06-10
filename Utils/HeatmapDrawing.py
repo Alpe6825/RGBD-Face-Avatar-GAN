@@ -1,9 +1,9 @@
-#last edit: 30.05.2020
+#last edit: 10.06.2020
 from PIL import Image, ImageDraw
 import torch
 import numpy as np
 
-def drawHeatmap(landmarks, imageSize,numpyReturn=False):
+def drawHeatmap(landmarks, imageSize,returnType="Numpy"):
     # make a blank image for the text, initialized to transparent text color
     image = Image.new('RGBA', (imageSize, imageSize), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
@@ -34,9 +34,12 @@ def drawHeatmap(landmarks, imageSize,numpyReturn=False):
         else:
             draw.line([x1, y1, x2, y2], width=4)
 
-    image = np.asarray(image)
 
-    if numpyReturn == False:
-        return torch.Tensor(image.transpose(2, 0, 1))
-    else:
+    if returnType == "PIL":
         return image
+    else:
+        image = np.asarray(image)
+        if returnType == "Tensor":
+            return torch.Tensor(image.transpose(2, 0, 1))
+        else:
+            return image
