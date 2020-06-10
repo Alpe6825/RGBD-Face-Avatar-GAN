@@ -53,7 +53,7 @@ def exportExample(image, heatmaps, path):
 
 
 def evalVis(input,heatmap,color,depth, export = True):
-
+    """
     f = plt.figure(figsize=(16, 6))
     f.tight_layout()
 
@@ -78,6 +78,7 @@ def evalVis(input,heatmap,color,depth, export = True):
     f4.set_title("Output (Depth)")
     f4.axis("off")
     plt.show()
+    """
 
     if export == True:
         input = cv.cvtColor(input, cv.COLOR_RGB2BGR)
@@ -116,7 +117,7 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
         rgbd_image,
         o3d.camera.PinholeCameraIntrinsic(
-            o3d.camera.PinholeCameraIntrinsicParameters.Kinect2DepthCameraDefault))
+            o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
     # Flip it, otherwise the pointcloud will be upside down
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
     print(np.asarray(pcd.points)[1, :])

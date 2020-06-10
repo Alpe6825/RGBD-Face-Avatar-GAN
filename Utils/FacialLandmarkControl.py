@@ -15,6 +15,7 @@ class FacialLandmarkController():
 
         self.root = tk.Tk()
         self.root.title("Facial Landmark Controller")
+        self.root.protocol('WM_DELETE_WINDOW', self.__CancelCommand)
         streamFrame = tk.Frame(self.root)
         streamFrame.pack()
 
@@ -117,6 +118,9 @@ class FacialLandmarkController():
             self.updateCanvas(1,hd.drawHeatmap(landmarks,256,True)[:,:,0:3])
 
         return landmarks
+
+    def __CancelCommand(event=None):
+        pass
 
 if __name__ == '__main__':
 
