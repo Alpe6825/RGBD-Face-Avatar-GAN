@@ -104,7 +104,6 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
             rgb[h][w][2] = image[h][w][2] * 127 + 127
             depth[h][w] =  (image[h][w][3] * 32767 + 32767)
 
-
     #print(rgb.shape,rgb.min(),rgb.max(),depth.shape,depth.min(),depth.max())
     if depth.max() == 0:
         return
@@ -116,8 +115,8 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
         color_raw, depth_raw, depth_scale=depthScale, depth_trunc=depth_trunc, convert_rgb_to_intensity=False)
 
     azure = o3d.camera.PinholeCameraIntrinsic()
-    azure.set_intrinsics(height=256, width=256, fx=1959.37890625, fy=1958.880126953125, cx=2044.2911376953125,
-                         cy=1565.8837890625)
+    azure.set_intrinsics(height=1080, width=1920, fx=916.9168701171875, fy=916.5850830078125, cx=150,
+                         cy=200)
 
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
         rgbd_image, azure)
@@ -125,7 +124,6 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
         #    o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
     # Flip it, otherwise the pointcloud will be upside down
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-    #print(np.asarray(pcd.points)[1, :])
 
     if export == True:
         o3d.visualization.draw_geometries([pcd])

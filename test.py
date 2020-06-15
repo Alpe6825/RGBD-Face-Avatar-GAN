@@ -105,6 +105,8 @@ if __name__ == '__main__':
             fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
 
             outputTensor = netG(torch.Tensor(fourChannelHeatmap.unsqueeze(0)).to(device))
+            depthScale = 64.06158357771261
+            outputTensor[0,3,:,:] *= (depthScale/65535*2*255)
             output = outputTensor[0].cpu().clone().detach().numpy()
 
             compl = np.zeros([3, imageSize, int(imageSize * 4)])

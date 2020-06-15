@@ -39,6 +39,11 @@ Run `test.py` in order to test the model with a webcam. The window that opens sh
 | webcam | landmarks | synthesized RGB face | synthesized depthmap |
 |---|---|---|---|
 
+<video width="858" height="480" controls>
+  <source src="https://nextcloud.mirevi.medien.hs-duesseldorf.de/s/CmJWZcqt7xnm9Eg/download" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 ### Facial Landmark Controller
 
 The Facial Landmark Controller offers the possibility to apply the relative input movement to an 
