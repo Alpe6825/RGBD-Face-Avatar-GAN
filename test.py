@@ -61,6 +61,8 @@ if __name__ == '__main__':
         cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
     print("Camera ID:",camID)
 
+    live3DPlot = vis.realtimePointCloud()
+
     df = pd.read_csv("Dataset/LandmarkControl.csv")
     lanmarkCrontrolVis = np.ndarray([imageSize,imageSize,3])
 
@@ -99,7 +101,7 @@ if __name__ == '__main__':
                         landmarks[i,1] = df['y_max'][i]
 
 
-            fourChannelHeatmap = hd.drawHeatmap(landmarks, imageSize)
+            fourChannelHeatmap = hd.drawHeatmap(landmarks, imageSize,returnType="Tensor")
             fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
 
             outputTensor = netG(torch.Tensor(fourChannelHeatmap.unsqueeze(0)).to(device))
@@ -116,6 +118,8 @@ if __name__ == '__main__':
             output = compl.transpose(1, 2, 0)
             output = output * 127.5 + 127.5
             output = output.astype('uint8')
+
+            #live3DPlot(outputTensor[0])
 
             if cv2.waitKey(1) & 0xFF == ord('s'):
                 hm = fourChannelHeatmap[0:3].cpu().clone().detach().numpy()

@@ -4,6 +4,9 @@ from PIL import Image
 import numpy as np
 import open3d as o3d
 import cv2 as cv
+import threading
+import time
+from queue import  Queue
 
 def showDatapair(image, heatmaps):
     image = image.cpu().clone().detach().numpy()
@@ -51,7 +54,6 @@ def exportExample(image, heatmaps, path):
     im = Image.fromarray(compl)
     im.save(path)
 
-
 def evalVis(input,heatmap,color,depth, export = True):
     """
     f = plt.figure(figsize=(16, 6))
@@ -88,7 +90,6 @@ def evalVis(input,heatmap,color,depth, export = True):
         cv.imwrite("Result/Snaps/outputColor.png", color)
         cv.imwrite("Result/Snaps/outputDepth.png", depth)
 
-
 def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
     image = x.cpu().clone().detach().numpy()
     image = image.transpose(1, 2, 0)
@@ -114,14 +115,56 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
     rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
         color_raw, depth_raw, depth_scale=depthScale, depth_trunc=depth_trunc, convert_rgb_to_intensity=False)
 
+    azure = o3d.camera.PinholeCameraIntrinsic()
+    azure.set_intrinsics(height=256, width=256, fx=1959.37890625, fy=1958.880126953125, cx=2044.2911376953125,
+                         cy=1565.8837890625)
+
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
-        rgbd_image,
-        o3d.camera.PinholeCameraIntrinsic(
-            o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
+        rgbd_image, azure)
+        #o3d.camera.PinholeCameraIntrinsic(
+        #    o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
     # Flip it, otherwise the pointcloud will be upside down
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-    print(np.asarray(pcd.points)[1, :])
-    o3d.visualization.draw_geometries([pcd])
+    #print(np.asarray(pcd.points)[1, :])
 
     if export == True:
+        o3d.visualization.draw_geometries([pcd])
         o3d.io.write_point_cloud("Result/Snaps/PointCloud.pts", pcd)
+    else:
+        return pcd
+
+class realtimePointCloud():
+
+    def __init__(self):
+
+        self.queue = Queue()
+        self.t = threading.Thread(target=self.test, args=("Thread-1", self.queue))
+        self.t.start()
+
+    def __call__(self, x):
+        #self.geometry.translate(np.array([[0],[0.01],[0]]))
+        #self._vis.update_geometry(self.geometry)
+        self.queue.put(x)
+
+    def test(self, threadname, q):
+        _vis = o3d.visualization.Visualizer()
+        _vis.create_window()
+        geometry = o3d.geometry.TriangleMesh.create_box()
+        _vis.add_geometry(geometry)
+
+
+        while True:
+            time.sleep(0.1)
+            x = q.get()
+            if x is not None:
+                #return  # Poison pill
+
+                _vis.remove_geometry(geometry)
+                geometry = showPointCloud(x, export=False)
+                _vis.add_geometry(geometry)
+                #geometry.translate(np.array([[0],[0.01],[0]]))
+                #_vis.update_geometry(geometry)
+
+            _vis.poll_events()
+            _vis.update_renderer()
+
