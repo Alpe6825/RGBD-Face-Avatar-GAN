@@ -61,7 +61,7 @@ if __name__ == '__main__':
         cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
     print("Camera ID:",camID)
 
-    live3DPlot = vis.realtimePointCloud()
+    #live3DPlot = vis.realtimePointCloud()
 
     df = pd.read_csv("Dataset/LandmarkControl.csv")
     lanmarkCrontrolVis = np.ndarray([imageSize,imageSize,3])

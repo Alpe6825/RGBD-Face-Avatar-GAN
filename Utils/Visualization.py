@@ -6,7 +6,7 @@ import open3d as o3d
 import cv2 as cv
 import threading
 import time
-from queue import  Queue
+from queue import Queue
 
 def showDatapair(image, heatmaps):
     image = image.cpu().clone().detach().numpy()
@@ -90,23 +90,30 @@ def evalVis(input,heatmap,color,depth, export = True):
         cv.imwrite("Result/Snaps/outputColor.png", color)
         cv.imwrite("Result/Snaps/outputDepth.png", depth)
 
+
 def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
     image = x.cpu().clone().detach().numpy()
     image = image.transpose(1, 2, 0)
     height, width, color = image.shape
-    rgb = np.zeros((height, width, color-1),dtype=np.uint8)
-    depth = np.zeros((height, width),dtype=np.uint16)
+    rgb = np.zeros((height, width, color-1), dtype=np.uint8)
+    depth = np.zeros((height, width), dtype=np.uint16)
 
     for h in range(0, height):
         for w in range(0, width):
             rgb[h][w][0] = image[h][w][0] * 127 + 127
             rgb[h][w][1] = image[h][w][1] * 127 + 127
             rgb[h][w][2] = image[h][w][2] * 127 + 127
-            depth[h][w] =  (image[h][w][3] * 32767 + 32767)
+            depth[h][w] = (image[h][w][3] * 32767 + 32767)
 
-    #print(rgb.shape,rgb.min(),rgb.max(),depth.shape,depth.min(),depth.max())
-    if depth.max() == 0:
-        return
+    mask = depth/65535*255
+
+    _, mask = cv.threshold(mask, 127, 255, cv.THRESH_BINARY_INV)
+
+    kernel = np.ones((5, 5), np.uint8)
+    mask2 = cv.erode(mask, kernel, iterations=1)
+    depth = (depth * (mask2 / 255)).astype(np.uint16)
+
+    # depth = cv.GaussianBlur(depth, (3, 3), 0)
 
     color_raw = o3d.geometry.Image(rgb)
     depth_raw = o3d.geometry.Image(depth)
@@ -115,13 +122,12 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
         color_raw, depth_raw, depth_scale=depthScale, depth_trunc=depth_trunc, convert_rgb_to_intensity=False)
 
     azure = o3d.camera.PinholeCameraIntrinsic()
-    azure.set_intrinsics(height=1080, width=1920, fx=916.9168701171875, fy=916.5850830078125, cx=150,
-                         cy=200)
+    azure.set_intrinsics(height=1080, width=1920,
+                         fx=916.9168701171875, fy=916.5850830078125,
+                         cx=150, cy=200)
 
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
         rgbd_image, azure)
-        #o3d.camera.PinholeCameraIntrinsic(
-        #    o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
     # Flip it, otherwise the pointcloud will be upside down
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 
@@ -149,7 +155,6 @@ class realtimePointCloud():
         _vis.create_window()
         geometry = o3d.geometry.TriangleMesh.create_box()
         _vis.add_geometry(geometry)
-
 
         while True:
             time.sleep(0.1)
