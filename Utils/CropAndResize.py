@@ -1,4 +1,4 @@
-# Last edit 07.06.2020
+# Last edit 19.06.2020
 import cv2
 import torch
 import Utils.FaceAlignmentNetwork as fan
@@ -25,7 +25,7 @@ def cropAndResizeImageLandmarkBased( image, imageSize, landmarks, computeLandmar
         max_x = max_x + (delta_y - delta_x) / 2
 
     if min_x < 0 or min_y < 0 or max_y > image.shape[0] - 1 or max_x > image.shape[1] - 1:
-        print("Gesicht zu nah am Bildrand!", min_x, max_x, min_y, max_y)
+
         if min_x < 0:
             min_x = 0
         if min_y < 0:
@@ -34,8 +34,7 @@ def cropAndResizeImageLandmarkBased( image, imageSize, landmarks, computeLandmar
             max_x = image.shape[1] - 1
         if max_y > image.shape[0] - 1:
             max_y = image.shape[0] - 1
-        print("Gesicht zu nah am Bildrand!", min_x, max_x, min_y, max_y)
-        # return image, []
+        print("Gesicht zu nah am Bildrand!")
 
     if useCropBuffer == True:
         del min_x_buffer[0]

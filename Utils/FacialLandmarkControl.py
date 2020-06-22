@@ -1,4 +1,4 @@
-#Last edit 07.06.2020
+#Last edit 19.06.2020
 import tkinter as tk
 from tkinter import filedialog
 import numpy as np
@@ -29,15 +29,15 @@ class FacialLandmarkController():
         self.slider_1 = tk.Scale(streamFrame, from_=0, to=0, length=256, command=self._slider)
         self.slider_1.grid(row=1, column=2)
 
-        #self.canvas_2 = tk.Canvas(streamFrame, width=256, height=256)
-        #self.canvas_2.grid(row=1, column=3)
+        self.canvas_2 = tk.Canvas(streamFrame, width=256, height=256)
+        self.canvas_2.grid(row=1, column=3)
 
         noise = np.random.randint(255, size=(256, 256))
         self.initial_tkImage = ImageTk.PhotoImage(Image.fromarray(noise))
 
         self.stream_0 = self.canvas_0.create_image(0, 0, anchor="nw", image=self.initial_tkImage)
         self.stream_1 = self.canvas_1.create_image(0, 0, anchor="nw", image=self.initial_tkImage)
-        #self.stream_2 = self.canvas_2.create_image(0, 0, anchor="nw", image=self.initial_tkImage)
+        self.stream_2 = self.canvas_2.create_image(0, 0, anchor="nw", image=self.initial_tkImage)
 
         self.matchButton = tk.Button(streamFrame, text="Start Matching", command=self._matchButton, state="disabled")
         self.matchButton.grid(row=2, column=0)
@@ -45,10 +45,16 @@ class FacialLandmarkController():
         self.loadButton = tk.Button(streamFrame, text="Load Profil", command=self._loadButton)
         self.loadButton.grid(row=2, column=1)
 
+        self.cageing = tk.IntVar()
+        self.checkbutton = tk.Checkbutton(streamFrame, text="Cage", variable=self.cageing, state="disabled")
+        self.checkbutton.grid(row=2, column=3)
+
         self.loadedProfil = Image.new('RGB', (256, 256), (0, 0, 0))
 
         self.neutralProfil1 = None
         self.neutralProfil2 = None
+
+        self.backupLandmarks = np.zeros((70,2))
 
 
     def _matchButton(self):
@@ -59,7 +65,7 @@ class FacialLandmarkController():
         else:
             self.matchButton["text"] = "Start Matching"
             self.matching = False;
-            self.updateCanvas(1, hd.drawHeatmap(self.neutralProfil2,256,True)[:,:,0:3])
+            self.updateCanvas(1, hd.drawHeatmap(self.neutralProfil2,256)[:,:,0:3])
 
     def _loadButton(self):
         #name = filedialog.askopenfilename()
@@ -82,10 +88,21 @@ class FacialLandmarkController():
         self._slider(0)
 
         self.matchButton.config(state="normal")
+        self.checkbutton.config(state="normal")
+
+        self.regions = np.zeros((self.loadedLandmarks.shape[1], 256, 256), np.uint8)
+        kernel = np.ones((3, 3), np.uint8)
+        for i in range(self.loadedLandmarks.shape[1]):
+            for j in range(self.loadedLandmarks.shape[0]):
+                x = int(self.loadedLandmarks[j,i,0])
+                y = int(self.loadedLandmarks[j,i,1])
+                cv2.circle(self.regions[i], (x, y), 1, 255, -1)
+            self.regions[i] = cv2.dilate(self.regions[i], kernel, iterations=1)
+        self.updateCanvas(2)
 
     def _slider(self, value):
         self.neutralProfil2 = self.loadedLandmarks[int(value)]
-        self.updateCanvas(1,hd.drawHeatmap(self.neutralProfil2,256,True)[:,:,0:3])
+        self.updateCanvas(1,hd.drawHeatmap(self.neutralProfil2,256)[:,:,0:3])
 
     def updateCanvas(self,canvas=0, img=np.ones((256,256))):
 
@@ -98,9 +115,16 @@ class FacialLandmarkController():
         if canvas == 1:
             global tkImage_1
             pilImage = Image.fromarray(img)
-            pilImage = Image.composite(pilImage,self.loadedProfil,pilImage.convert("L"))
+            #pilImage = Image.composite(pilImage,self.loadedProfil,pilImage.convert("L"))
             tkImage_1 = ImageTk.PhotoImage(image=pilImage)
             self.canvas_1.itemconfigure(self.stream_1, image=tkImage_1)
+
+        if canvas == 2:
+            global tkImage_2
+            pilImage = Image.fromarray(img)
+            pilImage = Image.composite(pilImage,self.loadedProfil,pilImage.convert("L"))
+            tkImage_2 = ImageTk.PhotoImage(image=pilImage)
+            self.canvas_2.itemconfigure(self.stream_2, image=tkImage_2)
 
         self.root.update()
 
@@ -108,14 +132,33 @@ class FacialLandmarkController():
         dif = landmarks-self.neutralProfil1
         return self.neutralProfil2 + dif
 
-    def __call__(self,landmarks):
-        self.updateCanvas(0,hd.drawHeatmap(landmarks,256,True)[:,:,0:3])
+    def cage(self, landmarks):
 
-        if self.matching == False:
-            self.neutralProfil1 = landmarks
-        else:
+        regions = self.regions
+        for i in range(landmarks.shape[0]):
+            x = np.clip(int(landmarks[i, 0]), 0, 255)
+            y = np.clip(int(landmarks[i, 1]), 0, 255)
+            if self.regions[i, y, x] != 255:
+                landmarks[i] = self.backupLandmarks[i]
+            else:
+                self.backupLandmarks[i] = landmarks[i]
+
+        self.updateCanvas(2, regions[10])
+
+        return landmarks
+
+    def __call__(self, landmarks):
+        self.updateCanvas(0,hd.drawHeatmap(landmarks, 256)[:,:,0:3])
+
+        if self.matching == True:
             landmarks = self.adjustLandmarks(landmarks)
-            self.updateCanvas(1,hd.drawHeatmap(landmarks,256,True)[:,:,0:3])
+            self.updateCanvas(1, hd.drawHeatmap(landmarks, 256)[:, :, 0:3])
+        else:
+            self.neutralProfil1 = landmarks
+
+        if self.cageing.get() == 1:
+            landmarks = self.cage(landmarks)
+            self.updateCanvas(2, hd.drawHeatmap(landmarks, 256, drawType="points")[:, :, 0:3])
 
         return landmarks
 
@@ -144,4 +187,3 @@ if __name__ == '__main__':
         sleep(0.1)
 
     flc.root.mainloop()
-

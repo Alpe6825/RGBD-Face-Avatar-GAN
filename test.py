@@ -1,4 +1,4 @@
-#Last edit 07.06.2020
+# Last edit 07.06.2020
 import torch
 import torch.nn as nn
 import Pix2PixGAN.Generator as pix2pixG
@@ -13,7 +13,6 @@ import Utils.FacialLandmarkControl as FacialLandmarkControl
 import cv2
 import numpy as np
 import Utils.HeatmapDrawing as hd
-import onnx
 import pandas as pd
 import os
 
@@ -29,29 +28,14 @@ if __name__ == '__main__':
     netG = pix2pixG.UnetGenerator(input_nc=4, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=False)
     netG = pix2pixInit.init_net(netG)
 
-    ### ONNX ####
-
-    # Input to the model
-    x = torch.randn(1, 4, 256, 256, requires_grad=True)
-
-    # Export the model
-    torch.onnx.export(netG,  # model being run
-                      x,  # model input (or a tuple for multiple inputs)
-                      "Result/tracedGenerator.onnx",  # where to save the model (can be a file or file-like object)
-                      export_params=True,  # store the trained parameter weights inside the model file
-                      opset_version=10,  # the ONNX version to export the model to
-                      do_constant_folding=True,  # whether to execute constant folding for optimization
-                      input_names=['input'],  # the model's input names
-                      output_names=['output'],  # the model's output names
-                      dynamic_axes={'input': {0: 'batch_size'},  # variable lenght axes
-                                    'output': {0: 'batch_size'}})
-    onnx_model = onnx.load("Result/tracedGenerator.onnx")
-    print(onnx.checker.check_model(onnx_model))
-
-    ##############
-
     netG.load_state_dict(torch.load("Result/trainedGenerator.pth"))
     netG.eval().to(device)
+
+    print("LoadModel")
+    loaded = torch.jit.load('Result/tracedGenerator.zip')
+    loaded = loaded.to(device)
+    # print(loaded)
+    # print(loaded.code)
 
     camID = 0
     cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
@@ -104,7 +88,7 @@ if __name__ == '__main__':
             fourChannelHeatmap = hd.drawHeatmap(landmarks, imageSize,returnType="Tensor")
             fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
 
-            outputTensor = netG(torch.Tensor(fourChannelHeatmap.unsqueeze(0)).to(device))
+            outputTensor = loaded.forward(fourChannelHeatmap.unsqueeze(0).to(device))# netG(fourChannelHeatmap.unsqueeze(0).to(device)) #loaded.forward(fourChannelHeatmap.unsqueeze(0)) #
             depthScale = 64.06158357771261
             outputTensor[0,3,:,:] *= (depthScale/65535*2*255)
             output = outputTensor[0].cpu().clone().detach().numpy()
