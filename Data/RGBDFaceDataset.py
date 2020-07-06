@@ -1,3 +1,4 @@
+# Last edit 06.07.2020
 import os
 import numpy as np
 import open3d as o3d
@@ -8,10 +9,11 @@ import torchvision
 from tqdm import tqdm
 from PIL import Image
 import cv2
-import pandas as pd
 
+import configFile as config
 import Utils.FaceAlignmentNetwork as fan
 import Utils.EyeTracking as et
+import Utils.GazeData as gd
 import Utils.HeatmapDrawing as hd
 import Utils.CropAndResize as car
 import Utils.Visualization as vis
@@ -20,7 +22,7 @@ class RGBDFaceDataset(Dataset):
 
     def __init__(self, path="", imageSize=256):
 
-        self.path_rgb8 = path + "RGB/"  # Pfad zu Ordner
+        self.path_rgb8 = path + "Color/"  # Pfad zu Ordner
         self.path_depth16 = path + "Depth/"
 
         self.rgb8_files = [i for i in os.listdir(self.path_rgb8) if
@@ -39,20 +41,25 @@ class RGBDFaceDataset(Dataset):
                                             fillcolor=0),torchvision.transforms.ToTensor()])
 
         ### Depth Histrogramm skalieren
-        _max = 0
-        _min = 65535
-        print("Compute DepthScale:")
-        for file in tqdm(self.depth16_files):
-            imageDepth16 = o3d.io.read_image(self.path_depth16 + file)
-            tempMax = np.asarray(imageDepth16).max()
-            tempMin = np.asarray(imageDepth16).min()
-            if _max < tempMax:
-                _max = tempMax
-            if _min > tempMin:
-                _min = tempMin
+        if os.path.exists(path + 'Depthscale.txt'):
+            print('Load Depthscale')
+            self.depthScale = np.loadtxt(path + 'Depthscale.txt', dtype=float)
+            print("Depthscale:", self.depthScale)
+        else:
+            _max = 0
+            _min = 65535
+            print("Compute DepthScale:")
+            for file in tqdm(self.depth16_files):
+                imageDepth16 = o3d.io.read_image(self.path_depth16 + file)
+                tempMax = np.asarray(imageDepth16).max()
+                tempMin = np.asarray(imageDepth16).min()
+                if _max < tempMax:
+                    _max = tempMax
+                if _min > tempMin:
+                    _min = tempMin
 
-        self.depthScale = 65535 / _max
-        print("DepthRange in Dataset:", _min, _max, "Depthscale for 16bit:", self.depthScale)
+            self.depthScale = 65535 / _max
+            print("DepthRange in Dataset:", _min, _max, "Depthscale for 16bit:", self.depthScale)
 
         self.landmarks = np.ndarray([len(self.rgb8_files), 68 + 2, 2])
 
@@ -62,21 +69,38 @@ class RGBDFaceDataset(Dataset):
             self.landmarks = test.reshape((-1, 68 + 2, 2))
         else:
             print("Create Landmarks:")
+            if os.path.exists(path + "GazeData.txt"):
+                self.gaze = gd.GazeData(path + "GazeData.txt")
             for idx in tqdm(range(0, len(self.rgb8_files))):
                 image = o3d.io.read_image(self.path_rgb8 + self.rgb8_files[idx])  # öffne Bilder
                 image = np.asarray(image).astype(float)  # Convert to Numpy Array
-                image = cv2.flip(image, 0)  # Spieglen -> Bug Claymore/AzureKinect)
+                if config.FlipYAxis:
+                    image = cv2.flip(image, 0)  # Spieglen -> Bug Claymore/AzureKinect)
 
                 landmarks = fan.create2DLandmarks(torch.Tensor(image[:, :, 0:3]))
                 image, landmarks = car.cropAndResizeImageLandmarkBased(image, self.imageSize, landmarks)
-                landmarks = np.concatenate((landmarks, et.eyeTracking(image[:, :, 0:3].astype("uint8"))), axis=0)
 
-                self.landmarks[idx] = landmarks
+                lefteye = landmarks[36:42, :]
+                lefteye = np.mean(lefteye.numpy(), axis=0).reshape((1,2))
+
+                righteye = landmarks[42:48, :]
+                righteye = np.mean(righteye.numpy(), axis=0).reshape((1,2))
+
+                eyekeypoints = np.concatenate((lefteye, righteye), axis=0)
+
+
+                if self.gaze:
+                    eyekeypoints = eyekeypoints + self.gaze(self.rgb8_files[idx])
+                """else:
+                    eyekeypoints = et.eyeTracking(image[:, :, 0:3].astype("uint8"))
+                """
+
+                self.landmarks[idx] = np.concatenate((landmarks, eyekeypoints), axis=0)
 
             np.savetxt(path + 'Landmarks.txt', self.landmarks.reshape(-1))
-            print("Landmarks saved as " + path + "/Landmarks.txt")
+            print("Landmarks saved as " + path + "Landmarks.txt")
 
-            landmarkControl = np.ndarray([68 + 2, 4])
+            """landmarkControl = np.ndarray([68 + 2, 4])
 
             for i in range(0, 70):
                 landmarkControl[i, 0] = min(self.landmarks[:, i, 0])
@@ -86,19 +110,21 @@ class RGBDFaceDataset(Dataset):
 
             pd.DataFrame(landmarkControl, columns=["x_min", "y_min", "x_max", "y_max"]).to_csv(
                 path + 'LandmarkControl.csv')
+            """
 
     def __len__(self):
         return len(self.rgb8_files)
 
     def __getitem__(self, idx):
-        imageRGB8 = o3d.io.read_image(self.path_rgb8 + self.rgb8_files[idx])  # öffne Bilder
+        imageRGB8 = o3d.io.read_image(self.path_rgb8 + self.rgb8_files[idx])
         imageDepth16 = o3d.io.read_image(self.path_depth16 + self.depth16_files[idx])
 
         imageRGB8 = np.asarray(imageRGB8).astype(float)  # Convert to Numpy Array
         imageDepth16 = np.asarray(imageDepth16).astype(float)
 
-        imageRGB8 = cv2.flip(imageRGB8, 0)  # Spiegeln da Bilder von Kinect falschrum sind
-        imageDepth16 = cv2.flip(imageDepth16, 0)
+        if config.FlipYAxis:
+            imageRGB8 = cv2.flip(imageRGB8, 0)  # Spiegeln da Bilder von Kinect falschrum sind
+            imageDepth16 = cv2.flip(imageDepth16, 0)
 
         if imageRGB8.shape[0:2] != imageDepth16.shape:  # Prüfen ob RGB und D zusammenpassen
             print("RGB8 und Depth16 sind unterschiedlich groß.")
@@ -129,7 +155,6 @@ class RGBDFaceDataset(Dataset):
         landmarks_temp = fan.create2DLandmarks(torch.Tensor(imageRGBD[:, :, 0:3]))
         imageRGBD = car.cropAndResizeImageLandmarkBased(imageRGBD, self.imageSize, landmarks_temp,
                                                          computeLandmarksAgain=False)
-
         imageRGBD[:, :, 0:3] = (imageRGBD[:, :, 0:3] - 127.5) / 127.5
         imageRGBD[:, :, 3] = (imageRGBD[:, :, 3] - 32767.5) / 32767.5
 
@@ -154,8 +179,12 @@ class RGBDFaceDataset(Dataset):
 
 if __name__ == '__main__':
 
-    rgbdFaceDataset = RGBDFaceDataset(imageSize=256, path="Dataset/")
+    rgbdFaceDataset = RGBDFaceDataset(imageSize=256, path="Data/" + config.DatasetName + "/")
 
-    for i in range(0, len(rgbdFaceDataset)):
+    if not os.path.exists("Data/" + config.DatasetName + "/Visualization/"):
+        os.mkdir("Data/" + config.DatasetName + "/Visualization/")
+
+    print("Visualization:")
+    for i in tqdm(range(0, len(rgbdFaceDataset))):
         sample = rgbdFaceDataset[i]
-        vis.exportExample(sample['RGBD'], sample['Heatmap'], "Dataset/Visualization/" + str(i) + ".png")
+        vis.exportExample(sample['RGBD'], sample['Heatmap'], "Data/" + config.DatasetName + "/Visualization/" + str(i) + ".png")

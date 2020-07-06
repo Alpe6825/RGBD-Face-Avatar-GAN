@@ -1,3 +1,4 @@
+# Last edit 06.07.2020
 import torch
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -7,6 +8,7 @@ import cv2 as cv
 import threading
 import time
 from queue import Queue
+import configFile as config
 
 def showDatapair(image, heatmaps):
     image = image.cpu().clone().detach().numpy()
@@ -84,11 +86,11 @@ def evalVis(input,heatmap,color,depth, export = True):
 
     if export == True:
         input = cv.cvtColor(input, cv.COLOR_RGB2BGR)
-        cv.imwrite("Result/Snaps/camera.png",input)
-        cv.imwrite("Result/Snaps/heatmap.png", heatmap)
+        cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/camera.png",input)
+        cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/heatmap.png", heatmap)
         color = cv.cvtColor(color, cv.COLOR_RGB2BGR)
-        cv.imwrite("Result/Snaps/outputColor.png", color)
-        cv.imwrite("Result/Snaps/outputDepth.png", depth)
+        cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/outputColor.png", color)
+        cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/outputDepth.png", depth)
 
 
 def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
@@ -106,12 +108,32 @@ def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
             depth[h][w] = (image[h][w][3] * 32767 + 32767)
 
     mask = depth/65535*255
-
     _, mask = cv.threshold(mask, 127, 255, cv.THRESH_BINARY_INV)
 
     kernel = np.ones((5, 5), np.uint8)
     mask2 = cv.erode(mask, kernel, iterations=1)
     depth = (depth * (mask2 / 255)).astype(np.uint16)
+
+    """
+    hist = cv.calcHist([depth], [0], None, [65536], [0, 65536])
+    hist[0] = 0
+    min_i = 0
+    while hist[min_i, 0] == 0:
+        min_i += 1
+    max_i = 65535
+    while hist[max_i, 0] == 0:
+        max_i -= 1
+    print(min_i,max_i)
+
+    hist = cv.calcHist([depth], [0], None, [max_i-min_i], [min_i, max_i])
+    plt.plot(hist)
+    plt.show()
+
+    depth = depth.reshape(-1)
+    depth -= min_i
+    print(depth.shape)
+    depth = (depth.astype(float)/(max_i-min_i)*255*0.5).astype(np.uint8).reshape(256,256)
+    """
 
     # depth = cv.GaussianBlur(depth, (3, 3), 0)
 

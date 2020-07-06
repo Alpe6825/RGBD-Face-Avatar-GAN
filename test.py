@@ -1,26 +1,24 @@
-# Last edit 07.06.2020
+# Last edit 06.07.2020
 import torch
 import torch.nn as nn
 import Pix2PixGAN.Generator as pix2pixG
 import Pix2PixGAN.Initialization as pix2pixInit
 import functools
-import Dataset.RGBDFaceDataset as rgbdDataset
 import Utils.FaceAlignmentNetwork as fan
 import Utils.CropAndResize as car
 import Utils.EyeTracking as et
 import Utils.Visualization as vis
-import Utils.FacialLandmarkControl as FacialLandmarkControl
+from Utils.FacialLandmarkControl import FacialLandmarkController
 import cv2
 import numpy as np
 import Utils.HeatmapDrawing as hd
 import pandas as pd
-import os
+import configFile as config
 
 if __name__ == '__main__':
 
     imageSize = 256
-    landmarkControl = False
-    flc = FacialLandmarkControl.FacialLandmarkController()
+    flc = FacialLandmarkController()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     ### Define Networks ###
@@ -28,11 +26,11 @@ if __name__ == '__main__':
     netG = pix2pixG.UnetGenerator(input_nc=4, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=False)
     netG = pix2pixInit.init_net(netG)
 
-    netG.load_state_dict(torch.load("Result/trainedGenerator.pth"))
+    netG.load_state_dict(torch.load("Data/" + config.DatasetName + "/Result/trainedGenerator.pth"))
     netG.eval().to(device)
 
     print("LoadModel")
-    loaded = torch.jit.load('Result/tracedGenerator.zip')
+    loaded = torch.jit.load("Data/" + config.DatasetName + "/Result/tracedGenerator.zip")
     loaded = loaded.to(device)
     # print(loaded)
     # print(loaded.code)
@@ -46,14 +44,6 @@ if __name__ == '__main__':
     print("Camera ID:",camID)
 
     #live3DPlot = vis.realtimePointCloud()
-
-    df = pd.read_csv("Dataset/LandmarkControl.csv")
-    lanmarkCrontrolVis = np.ndarray([imageSize,imageSize,3])
-
-    if landmarkControl == True:
-        for i in range(0,70):
-            cv2.rectangle(lanmarkCrontrolVis, (int(df['x_min'][i]), int(df['y_min'][i])), (int(df['x_max'][i]), int(df['y_max'][i])), (100, 0, 0), 2)
-
 
     while (True):
         # Capture frame-by-frame
@@ -73,18 +63,6 @@ if __name__ == '__main__':
 
             landmarks = flc(landmarks)
 
-            if landmarkControl == True:
-                for i in range(0,70):
-                    if landmarks[i,0] < df['x_min'][i]:
-                        landmarks[i,0] = df['x_min'][i]
-                    elif landmarks[i,0] > df['x_max'][i]:
-                        landmarks[i,0] = df['x_max'][i]
-                    if landmarks[i,1] < df['y_min'][i]:
-                        landmarks[i,1] = df['y_min'][i]
-                    elif landmarks[i,1] > df['y_max'][i]:
-                        landmarks[i,1] = df['y_max'][i]
-
-
             fourChannelHeatmap = hd.drawHeatmap(landmarks, imageSize,returnType="Tensor")
             fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
 
@@ -95,7 +73,7 @@ if __name__ == '__main__':
 
             compl = np.zeros([3, imageSize, int(imageSize * 4)])
             compl[:, :, 0:imageSize] = (image.transpose(2, 0, 1) - 127.5)/127.5
-            compl[:, :, imageSize:imageSize*2] = fourChannelHeatmap[0:3, :, :] + lanmarkCrontrolVis.transpose(2,0,1)
+            compl[:, :, imageSize:imageSize*2] = fourChannelHeatmap[0:3, :, :]# + lanmarkCrontrolVis.transpose(2,0,1)
             compl[:, :, imageSize*2:imageSize*3] = output[0:3, :, :]
             compl[0, :, imageSize*3:imageSize*4] = output[3, :, :]
             compl[1, :, imageSize*3:imageSize*4] = output[3, :, :]

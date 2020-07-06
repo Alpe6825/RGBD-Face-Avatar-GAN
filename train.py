@@ -1,3 +1,4 @@
+# Last edit 06.07.2020
 import torch
 import torch.nn as nn
 import Pix2PixGAN.Generator as pix2pixG
@@ -5,14 +6,20 @@ import Pix2PixGAN.Discriminator as pix2pixD
 import Pix2PixGAN.Initialization as pix2pixInit
 import Pix2PixGAN.GANLoss as pix2pixLoss
 import functools
-import Dataset.RGBDFaceDataset as rgbdDataset
+import Data.RGBDFaceDataset as rgbdDataset
 import Utils.Visualization as Vis
 from tqdm import tqdm
 from os import path
 from torchsummary import summary
 import onnx
+import os
+import configFile as config
 
 if __name__ == '__main__':
+
+    if not os.path.exists("Data/" + config.DatasetName + "/Result/"):
+        os.mkdir("Data/" + config.DatasetName + "/Result/")
+        os.mkdir("Data/" + config.DatasetName + "/Snaps/")
 
     ### Define Networks ###
 
@@ -26,10 +33,10 @@ if __name__ == '__main__':
 
     ### Load Exsting Model State ###
 
-    if path.exists("Result/trainedGenerator.pth") and path.exists("Result/trainedDiscriminator.pth"):
+    if path.exists("Data/" + config.DatasetName + "/Result/trainedGenerator.pth") and path.exists("Data/" + config.DatasetName + "/Result/trainedDiscriminator.pth"):
 
-        netG.load_state_dict(torch.load("Result/trainedGenerator.pth"))
-        netD.load_state_dict(torch.load("Result/trainedDiscriminator.pth"))
+        netG.load_state_dict(torch.load("Data/" + config.DatasetName + "/Result/trainedGenerator.pth"))
+        netD.load_state_dict(torch.load("Data/" + config.DatasetName + "/Result/trainedDiscriminator.pth"))
 
         startEpoch = int(input('Enter startEpoch:'))
         print('startEpoch:', startEpoch, type(startEpoch))
@@ -55,7 +62,7 @@ if __name__ == '__main__':
 
     ### Training ###
 
-    dataset = rgbdDataset.RGBDFaceDataset(imageSize=256, path="Dataset/")
+    dataset = rgbdDataset.RGBDFaceDataset(imageSize=256, path="Data/" + config.DatasetName + "/")
     dataset = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
     for epoch in range(startEpoch, 200 + 1):
@@ -109,8 +116,8 @@ if __name__ == '__main__':
 
         ### Save Modell ###
 
-        torch.save(netG.cpu().state_dict(), "Result/trainedGenerator.pth")
-        torch.save(netD.cpu().state_dict(), "Result/trainedDiscriminator.pth")
+        torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedGenerator.pth")
+        torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator.pth")
 
         ### Trace Modell ###
 
@@ -118,7 +125,7 @@ if __name__ == '__main__':
         traced = torch.jit.trace(netG.eval(), noise)
         netG.train().to(device)
         netD.train().to(device)
-        traced.save('Result/tracedGenerator.zip')
+        traced.save("Data/" + config.DatasetName + "/Result/tracedGenerator.zip")
         #print("LoadModel")
         #loaded = torch.jit.load('trainedGenerator.zip')
         #print(loaded)
@@ -128,13 +135,13 @@ if __name__ == '__main__':
 
         ### Export Sample Image ###
 
-        Vis.exportExample(fakeRGBD[0], heatmap[0], "Result/example.png")
+        Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/example.png")
 
     ### ONNX ####
     x = torch.randn(1, 4, 256, 256, requires_grad=True)
     torch.onnx.export(netG,  # model being run
                       x,  # model input (or a tuple for multiple inputs)
-                      "Result/tracedGenerator.onnx",  # where to save the model (can be a file or file-like object)
+                      "Data/" + config.DatasetName + "/Result/tracedGenerator.onnx",  # where to save the model (can be a file or file-like object)
                       export_params=True,  # store the trained parameter weights inside the model file
                       opset_version=10,  # the ONNX version to export the model to
                       do_constant_folding=True,  # whether to execute constant folding for optimization
@@ -142,7 +149,7 @@ if __name__ == '__main__':
                       output_names=['output'],  # the model's output names
                       dynamic_axes={'input': {0: 'batch_size'},  # variable lenght axes
                                     'output': {0: 'batch_size'}})
-    onnx_model = onnx.load("Result/tracedGenerator.onnx")
+    onnx_model = onnx.load("Data/" + config.DatasetName + "/Result/tracedGenerator.onnx")
     print(onnx.checker.check_model(onnx_model))
 
     ##############

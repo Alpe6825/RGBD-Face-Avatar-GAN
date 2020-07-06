@@ -1,4 +1,8 @@
 /venv/
+/Data/*
+!/Dataset/RGBDFaceDataset.py
+
+
 /Dataset/RGB/*
 !/Dataset/RGB/README.md
 /Dataset/Depth/*
@@ -10,9 +14,3 @@
 
 /Utils/TestImage.png
 /Utils/Testvideo.mp4
-
-/Result/trainedGenerator.pth
-/Result/trainedDiscriminator.pth
-/Result/tracedGenerator.zip
-/Result/tracedGenerator.onnx
-/Result/example.png
