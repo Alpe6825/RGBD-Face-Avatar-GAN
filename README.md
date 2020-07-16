@@ -43,6 +43,7 @@ Run `test.py` in order to test the model with a webcam. The window that opens sh
 
 | webcam-input | facial landmarks | synthesized RGB image | synthesized depthmap |
 |---|---|---|---|
+
 ![RGBD-Face-Avatar-GAN](Docu/Images/RGBD-Face-Avatar-GAN.png)
 
 ## Demo
