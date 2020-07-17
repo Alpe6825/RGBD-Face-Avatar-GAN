@@ -51,6 +51,8 @@ Run `test.py` in order to test the model with a webcam. The window that opens sh
 The [project page](https://mirevi.de/projects/personalized-avatars-generated-by-a-neural-network-for-telepresence-and-mixed-reality) at MIREVI contains a demo video
 (without Facial-Landmark-Controller).
 
+Another  video with explanations (in german) can be found [here](https://nextcloud.mirevi.medien.hs-duesseldorf.de/s/draibnCpbcGRH2A).
+
 ### Facial Landmark Controller
 
 The Facial Landmark Controller offers the possibility to apply the relative input movement to an 
