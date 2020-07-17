@@ -26,11 +26,11 @@ Create a folder with the dataset name in `Data` and edit `DatasetName` in `confi
 `FlipYAxis` should be `False` in most cases.
 
 You need rgbd-images in form of an 8bit rgb image and 16bit depth image. 
-Put the rgb images under Data/Dataset_Person_A/RGB/` and the depth images under `Data/Dataset_Person_A/RGB/`.
+Put the rgb images under `Data/Dataset_Person_A/RGB/` and the depth images under `Data/Dataset_Person_A/Depth/`.
 
 A tool for creating the dataset automatical with an rgbd-camera is still under construction.
 
-If you run `RGBDfaceDataset.py`, the folder "Visualization" contains the complete dataset in a visible form. 
+If you run `RGBDfaceDataset.py`, the folder `Visualization` contains the complete dataset in a visible form. 
 Ths is not necessary for training and only for debug.
 
 ## Training
