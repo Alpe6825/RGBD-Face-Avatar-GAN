@@ -41,10 +41,12 @@ Run `train.py`.
 
 Run `test.py` in order to test the model with a webcam. The window that opens shows: 
 
-| webcam-input | facial landmarks | synthesized RGB image | synthesized depthmap |
-|---|---|---|---|
+| webcam-input | facial landmarks | synthesized RGB image | synthesized depthmap | structural similarity *| 
+|---|---|---|---|---|
 
 ![RGBD-Face-Avatar-GAN](Docu/Images/RGBD-Face-Avatar-GAN.png)
+
+*(useful if a person controls their own avatar)  
 
 ## Demo
 
