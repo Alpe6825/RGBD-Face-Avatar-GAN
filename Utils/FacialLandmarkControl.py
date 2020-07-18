@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageTk
 import cv2
 import Utils.HeatmapDrawing as hd
 from time import sleep
+import configFile as config
 
 class FacialLandmarkController():
 
@@ -71,7 +72,7 @@ class FacialLandmarkController():
         #name = filedialog.askopenfilename()
         #print(name)
 
-        self.loadedLandmarks = np.loadtxt('Dataset/Landmarks.txt', dtype=float).reshape((-1, 2))
+        self.loadedLandmarks = np.loadtxt('Data/' + config.DatasetName + '/Landmarks.txt', dtype=float).reshape((-1, 2))
 
         self.loadedProfil = Image.new('RGB', (256, 256), (0, 0, 0))
         draw = ImageDraw.Draw(self.loadedProfil)
@@ -82,7 +83,7 @@ class FacialLandmarkController():
             if x > 3 and y > 3:
                 draw.ellipse([(x - 3, y - 3), (x + 3, y + 3)], fill=(55, 55, 55))
 
-        self.loadedLandmarks = self.loadedLandmarks.reshape((-1, 70,2))
+        self.loadedLandmarks = self.loadedLandmarks.reshape((-1, 70, 2))
         self.slider_1.config(to=self.loadedLandmarks.shape[0]-1)
         self.slider_1.set(0)
         self._slider(0)

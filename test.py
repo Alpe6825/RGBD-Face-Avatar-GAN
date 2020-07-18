@@ -12,7 +12,7 @@ from Utils.FacialLandmarkControl import FacialLandmarkController
 import cv2
 import numpy as np
 import Utils.HeatmapDrawing as hd
-import pandas as pd
+import Utils.Evaluation as ev
 import configFile as config
 
 if __name__ == '__main__':
@@ -32,16 +32,18 @@ if __name__ == '__main__':
     print("LoadModel")
     loaded = torch.jit.load("Data/" + config.DatasetName + "/Result/tracedGenerator.zip")
     loaded = loaded.to(device)
-    # print(loaded)
-    # print(loaded.code)
 
     camID = 0
     cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
     while (cap.isOpened() == False):
         print("Error opening video stream or file")
         camID +=1
-        cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
-    print("Camera ID:",camID)
+        cap = cv2.VideoCapture(camID)
+    print("Camera ID:", camID)
+
+    ssim_counter = 0
+    ssim_modulo = 25 # Frameinterval für structural_similarity
+    diff = np.zeros((imageSize, imageSize))
 
     #live3DPlot = vis.realtimePointCloud()
 
@@ -53,6 +55,7 @@ if __name__ == '__main__':
         frame = cv2.imread("Dataset/RGB/" + datasetRGB[332])
         frame = cv2.flip(frame,0)
         """
+        #frame = cv2.imread("C:/Users/Alexander Pech/Pictures/Camera Roll/NME/raw7.jpg")
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         try:
@@ -71,13 +74,21 @@ if __name__ == '__main__':
             outputTensor[0,3,:,:] *= (depthScale/65535*2*255)
             output = outputTensor[0].cpu().clone().detach().numpy()
 
-            compl = np.zeros([3, imageSize, int(imageSize * 4)])
+            compl = np.zeros([3, imageSize, int(imageSize * 5)])
             compl[:, :, 0:imageSize] = (image.transpose(2, 0, 1) - 127.5)/127.5
             compl[:, :, imageSize:imageSize*2] = fourChannelHeatmap[0:3, :, :]# + lanmarkCrontrolVis.transpose(2,0,1)
             compl[:, :, imageSize*2:imageSize*3] = output[0:3, :, :]
             compl[0, :, imageSize*3:imageSize*4] = output[3, :, :]
             compl[1, :, imageSize*3:imageSize*4] = output[3, :, :]
             compl[2, :, imageSize*3:imageSize*4] = output[3, :, :]
+
+            if ssim_counter % ssim_modulo == 0:
+                diff = ev.ssim(image, output[0:3, :, :].transpose(1, 2, 0))
+            ssim_counter += 1
+            compl[0, :, imageSize * 4:imageSize * 5] = diff * 2 - 1
+            compl[1, :, imageSize * 4:imageSize * 5] = diff * 2 - 1
+            compl[2, :, imageSize * 4:imageSize * 5] = diff * 2 - 1
+
 
             output = compl.transpose(1, 2, 0)
             output = output * 127.5 + 127.5
