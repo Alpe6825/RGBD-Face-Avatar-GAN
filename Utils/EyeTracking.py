@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import torch
 import Utils.FaceAlignmentNetwork as fan
 import Utils.CropAndResize as car
+from os import listdir
 
 # init part
-eye_cascade = cv2.CascadeClassifier('Utils/haarcascade_eye.xml')
+eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
 detector_params = cv2.SimpleBlobDetector_Params()
 detector_params.filterByArea = True
 detector_params.maxArea = 1500
@@ -50,17 +51,17 @@ def cut_eyebrows(img):
 
 def blob_process(img, threshold, detector):
     gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #plt.imshow(gray_frame)
-    #plt.show()
-    _, img = cv2.threshold(gray_frame, threshold, 255, cv2.THRESH_BINARY)
-    #plt.imshow(img)
-    #plt.show()
+    plt.imshow(gray_frame)
+    plt.show(block=False)
+    _, img = cv2.threshold(gray_frame, threshold, 255, cv2.THRESH_BINARY_INV)
+    plt.imshow(img)
+    plt.show(block=False)
     img = cv2.erode(img, None, iterations=2)
     #img = cv2.dilate(img, None, iterations=4)
     img = cv2.medianBlur(img, 5)
     keypoints = detector.detect(img)
-    #plt.imshow(img)
-    #plt.show()
+    plt.imshow(img)
+    plt.show(block=False)
     #print(keypoints) # Sign for eyes found
     return keypoints
 
@@ -114,11 +115,15 @@ if __name__ == "__main__":
 
     print("Eye Tracking Test")
 
-    cap = cv2.VideoCapture("/Utils/Testvideo.mp4")
+    cap = cv2.VideoCapture("Testvideo.mp4")
 
     while (True):
         # Capture frame-by-frame
-        ret, frame = cap.read()
+        #ret, frame = cap.read()
+        frame = cv2.imread("../Data/3.Durchlauf-4.Datensatz-OhneLampeImHintergrundUndOhneStuhllehne/IR/color_and_depth_shoot_from_2020-7-1---23-31-44_IRimage_1.png")
+        frame = cv2. flip(frame, 0)
+        frame = cv2.cvtColor(cv2.equalizeHist(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)), cv2.COLOR_GRAY2BGR)
+
         testImage = frame
 
         landmarks = fan.create2DLandmarks(torch.Tensor(testImage))

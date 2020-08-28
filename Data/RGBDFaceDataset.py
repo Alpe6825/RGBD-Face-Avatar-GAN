@@ -17,6 +17,7 @@ import Utils.GazeData as gd
 import Utils.HeatmapDrawing as hd
 import Utils.CropAndResize as car
 import Utils.Visualization as vis
+import Utils.IR_EyeTracking as ir
 
 class RGBDFaceDataset(Dataset):
 
@@ -24,16 +25,20 @@ class RGBDFaceDataset(Dataset):
 
         self.path_rgb8 = path + "Color/"  # Pfad zu Ordner
         self.path_depth16 = path + "Depth/"
+        self.path_ir8 = path + "IR/"
 
         self.rgb8_files = [i for i in os.listdir(self.path_rgb8) if
                            i.endswith('.png') or i.endswith('.jpg')]  # Liste alle Datein auf
         self.depth16_files = [i for i in os.listdir(self.path_depth16) if i.endswith('.png')]
+        self.ir8_files = [i for i in os.listdir(self.path_ir8) if i.endswith('.png')]
+
         self.rgb8_files.sort(key=lambda f: os.path.splitext(f)[0])  # Sortiere nach Namen
         self.depth16_files.sort(key=lambda f: os.path.splitext(f)[0])
+        self.ir8_files.sort(key=lambda f: os.path.splitext(f)[0])
 
-        if len(self.rgb8_files) != len(self.depth16_files):  # Prüfen ob gleich viele RGB unf Tiefenbilder vorhanden sind
+        if len(self.rgb8_files) != len(self.depth16_files) and len(self.rgb8_files) != len(self.ir8_files):  # Prüfen ob gleich viele RGB unf Tiefenbilder vorhanden sind
             print("Different number of rgb8- and depth16-files!")
-            print("RGB: ", len(self.rgb8_files), " Depth: ", len(self.depth16_files))
+            print("RGB: ", len(self.rgb8_files), " Depth: ", len(self.depth16_files), " IR: ", len(self.ir8_files))
             exit()
 
         self.imageSize = imageSize
@@ -69,33 +74,46 @@ class RGBDFaceDataset(Dataset):
             self.landmarks = test.reshape((-1, 68 + 2, 2))
         else:
             print("Create Landmarks:")
-            if os.path.exists(path + "GazeData.txt"):
-                self.gaze = gd.GazeData(path + "GazeData.txt")
+            #if os.path.exists(path + "GazeData.txt"):
+            #    self.gaze = gd.GazeData(path + "GazeData.txt")
+
+            eye_tracking_ir = ir.IREyeTraking(540, 320, 160, 40)
+
             for idx in tqdm(range(0, len(self.rgb8_files))):
                 image = o3d.io.read_image(self.path_rgb8 + self.rgb8_files[idx])  # öffne Bilder
                 image = np.asarray(image).astype(float)  # Convert to Numpy Array
+                ir_image = cv2.imread(self.path_ir8 + self.ir8_files[idx], cv2.IMREAD_GRAYSCALE)
+
                 if config.FlipYAxis:
                     image = cv2.flip(image, 0)  # Spieglen -> Bug Claymore/AzureKinect)
+                    ir_image = cv2.flip(ir_image, 0)
 
                 landmarks = fan.create2DLandmarks(torch.Tensor(image[:, :, 0:3]))
-                image, landmarks = car.cropAndResizeImageLandmarkBased(image, self.imageSize, landmarks)
 
-                lefteye = landmarks[36:42, :]
+                x1, y1, x2, y2 = eye_tracking_ir(ir_image)
+                eyesTensor = torch.Tensor([[x1, y1], [x2, y2]])
+                landmarks = torch.cat((landmarks, eyesTensor), 0)
+
+                image, landmarks = car.cropAndResizeImageLandmarkBased(image, self.imageSize, landmarks)
+                self.landmarks[idx]  = landmarks
+
+                """lefteye = landmarks[36:42, :]
                 lefteye = np.mean(lefteye.numpy(), axis=0).reshape((1,2))
 
                 righteye = landmarks[42:48, :]
                 righteye = np.mean(righteye.numpy(), axis=0).reshape((1,2))
 
                 eyekeypoints = np.concatenate((lefteye, righteye), axis=0)
+                """
 
 
-                if self.gaze:
-                    eyekeypoints = eyekeypoints + self.gaze(self.rgb8_files[idx])
+                #if self.gaze:
+                #    eyekeypoints = eyekeypoints + self.gaze(self.rgb8_files[idx])
                 """else:
                     eyekeypoints = et.eyeTracking(image[:, :, 0:3].astype("uint8"))
                 """
 
-                self.landmarks[idx] = np.concatenate((landmarks, eyekeypoints), axis=0)
+                #self.landmarks[idx] = np.concatenate((landmarks, eyekeypoints), axis=0)
 
             np.savetxt(path + 'Landmarks.txt', self.landmarks.reshape(-1))
             print("Landmarks saved as " + path + "Landmarks.txt")

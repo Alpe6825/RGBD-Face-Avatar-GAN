@@ -11,15 +11,18 @@ import Utils.Visualization as Vis
 from tqdm import tqdm
 from os import path
 from torchsummary import summary
+from torch.utils.tensorboard import SummaryWriter
 import onnx
 import os
 import configFile as config
+import statistics
 
 if __name__ == '__main__':
 
     if not os.path.exists("Data/" + config.DatasetName + "/Result/"):
         os.mkdir("Data/" + config.DatasetName + "/Result/")
         os.mkdir("Data/" + config.DatasetName + "/Snaps/")
+        os.mkdir("Data/" + config.DatasetName + "/TensorBoard-Run/")
 
     ### Define Networks ###
 
@@ -44,6 +47,11 @@ if __name__ == '__main__':
     else:
         startEpoch = 1
 
+    ### Tensorboard
+    comment = f'_dataset={config.DatasetName}'
+    print("TensorBoard:" + comment)
+    tb = SummaryWriter(comment=comment)
+
     ### Training settings ###
 
     learningRate = 0.0002
@@ -67,6 +75,8 @@ if __name__ == '__main__':
 
     for epoch in range(startEpoch, 200 + 1):
         print("Epoche: ", epoch, "(LearningRates:", scheduler_G.get_last_lr(), scheduler_D.get_last_lr(),")")
+        epoch_loss_D = []
+        epoch_loss_G = []
         for i, data in enumerate(tqdm(dataset)):
 
             heatmap = data['Heatmap'].to(device)
@@ -109,6 +119,12 @@ if __name__ == '__main__':
             loss_G.backward()
             optimizer_G.step()  # udpate G's weights
 
+            epoch_loss_D.append(loss_D.item())
+            epoch_loss_G.append(loss_G.item())
+
+        tb.add_scalars("Loss", {'Discriminator': statistics.mean(epoch_loss_D),
+                                'Generator': statistics.mean(epoch_loss_G)}, epoch)
+
         ### Learning Rate Schedular
 
         scheduler_G.step()
@@ -118,6 +134,10 @@ if __name__ == '__main__':
 
         torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedGenerator.pth")
         torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator.pth")
+
+        if epoch % 10 == 0:
+            torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedGenerator_epoch_" + epoch + ".pth")
+            torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator_" + epoch + ".pth")
 
         ### Trace Modell ###
 

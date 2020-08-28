@@ -1,4 +1,4 @@
-# Last edit 03.07.2020
+# Last edit 03.07.2020 - Not Use (29.08.20)
 import numpy as np
 import os
 
