@@ -45,12 +45,13 @@ class IREyeTraking:
         self.h = h
 
         cv2.namedWindow("window2")
-        cv2.createTrackbar("Thresh", "window2", 106, 255, nothing)
+        cv2.createTrackbar("Thresh", "window2", 120, 255, nothing) #106
 
     def __call__(self, image) -> (int, int, int, int):
         image = cv2.equalizeHist(image)
         roi = image[self.y:self.y+self.h, self.x:self.x+self.w]
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        cv2.rectangle(image,(self.x, self.y), (self.x + self.w, self.y + self.h), (0, 0, 255), 2)
 
         roi[:, int(self.w / 3):int(self.w / 3) * 2] = 255
 
@@ -79,8 +80,8 @@ class IREyeTraking:
             (x1, y1, w1, h1) = cv2.boundingRect(cnt)
             cv2.rectangle(roi, (x1, y1), (x1 + w1, y1 + h1), (0, 255, 0), 2)
 
-            y1 += 320 + int(h1 / 2)
-            x1 += 540 + w1 - 15
+            y1 += self.y + int(h1 / 2)
+            x1 += self.x + w1 - 15
 
             image[y1 - 3:y1 + 3, x1 - 3:x1 + 3] = np.array([0, 255, 0])
 
@@ -94,8 +95,8 @@ class IREyeTraking:
             (x2, y2, w2, h2) = cv2.boundingRect(cnt)
             cv2.rectangle(roi, (x2 + offset_w, y2), (x2 + w2 + offset_w, y2 + h2), (0, 255, 0), 2)
 
-            y2 += 320 + int(h2 / 2)
-            x2 += 540 + 80 + 15
+            y2 += self.y + int(h2 / 2)
+            x2 += self.x + int(self.w/2) + 15
 
             image[y2 - 3:y2 + 3, x2 - 3:x2 + 3] = np.array([0, 255, 0])
 

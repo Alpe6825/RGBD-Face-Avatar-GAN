@@ -77,7 +77,7 @@ class RGBDFaceDataset(Dataset):
             #if os.path.exists(path + "GazeData.txt"):
             #    self.gaze = gd.GazeData(path + "GazeData.txt")
 
-            eye_tracking_ir = ir.IREyeTraking(540, 320, 160, 40)
+            eye_tracking_ir = ir.IREyeTraking(540, 300, 160, 40)
 
             for idx in tqdm(range(0, len(self.rgb8_files))):
                 image = o3d.io.read_image(self.path_rgb8 + self.rgb8_files[idx])  # öffne Bilder
