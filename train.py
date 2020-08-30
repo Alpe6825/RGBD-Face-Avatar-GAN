@@ -21,8 +21,7 @@ if __name__ == '__main__':
 
     if not os.path.exists("Data/" + config.DatasetName + "/Result/"):
         os.mkdir("Data/" + config.DatasetName + "/Result/")
-        os.mkdir("Data/" + config.DatasetName + "/Snaps/")
-        os.mkdir("Data/" + config.DatasetName + "/TensorBoard-Run/")
+        os.mkdir("Data/" + config.DatasetName + "/Result/Snaps/")
 
     ### Define Networks ###
 
@@ -136,8 +135,8 @@ if __name__ == '__main__':
         torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator.pth")
 
         if epoch % 10 == 0:
-            torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedGenerator_epoch_" + epoch + ".pth")
-            torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator_" + epoch + ".pth")
+            torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedGenerator_epoch_" + str(epoch) + ".pth")
+            torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator_" + str(epoch) + ".pth")
 
         ### Trace Modell ###
 
@@ -155,11 +154,11 @@ if __name__ == '__main__':
 
         ### Export Sample Image ###
 
-        Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/example.png")
+        Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/example_" + str(epoch) +".png")
 
     ### ONNX ####
     x = torch.randn(1, 4, 256, 256, requires_grad=True)
-    torch.onnx.export(netG,  # model being run
+    torch.onnx.export(netG.to("cpu"),  # model being run
                       x,  # model input (or a tuple for multiple inputs)
                       "Data/" + config.DatasetName + "/Result/tracedGenerator.onnx",  # where to save the model (can be a file or file-like object)
                       export_params=True,  # store the trained parameter weights inside the model file
