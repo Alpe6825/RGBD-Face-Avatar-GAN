@@ -67,3 +67,50 @@ def cropAndResizeImageLandmarkBased( image, imageSize, landmarks, computeLandmar
         return frame, preds2
     else:
         return frame
+
+###################### 02.09.2020
+
+def cropAndResizeLandmarksDatasetBased(landmarks, imageSize, crop_region):
+
+    # edit Image
+    #image = image[int(min_y):int(max_y), int(min_x):int(max_x)]
+    #image = cv2.resize(image, (imageSize, imageSize))
+
+    # edit Landmarks
+
+    min_x = crop_region[0]
+    max_x = crop_region[1]
+    min_y = crop_region[2]
+    max_y = crop_region[3]
+
+    delta_x = max_x - min_x
+    delta_y = max_y - min_y
+
+    if delta_x > delta_y:
+        min_y = min_y - (delta_x - delta_y) / 2
+        max_y = max_y + (delta_x - delta_y) / 2
+    if delta_y > delta_x:
+        min_x = min_x - (delta_y - delta_x) / 2
+        max_x = max_x + (delta_y - delta_x) / 2
+
+    preds2 = landmarks
+    preds2[:, 0] -= min_x
+    preds2[:, 1] -= min_y
+
+    preds2[:, 0] *= imageSize / (max_x - min_x)
+    preds2[:, 1] *= imageSize / (max_y - min_y)
+
+    return preds2
+
+def cropAndResizeImageDatasetBased(image, imageSize, crop_region):
+
+    min_x = crop_region[0]
+    max_x = crop_region[1]
+    min_y = crop_region[2]
+    max_y = crop_region[3]
+
+    # edit Image
+    image = image[int(min_y):int(max_y), int(min_x):int(max_x)]
+    image = cv2.resize(image, (imageSize, imageSize))
+
+    return image

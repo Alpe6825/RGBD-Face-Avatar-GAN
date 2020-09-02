@@ -67,17 +67,20 @@ class RGBDFaceDataset(Dataset):
             print("DepthRange in Dataset:", _min, _max, "Depthscale for 16bit:", self.depthScale)
 
         self.landmarks = np.ndarray([len(self.rgb8_files), 68 + 2, 2])
+        self.crop_region = np.zeros(4)
 
         if os.path.exists(path + 'Landmarks.txt'):                    # LoadLandmarks
             print('Load Landmarks')
             test = np.loadtxt(path + 'Landmarks.txt', dtype=float)
             self.landmarks = test.reshape((-1, 68 + 2, 2))
+
+            self.crop_region = np.loadtxt(path + 'crop_region.txt', dtype=float)
         else:
             print("Create Landmarks:")
             #if os.path.exists(path + "GazeData.txt"):
             #    self.gaze = gd.GazeData(path + "GazeData.txt")
 
-            eye_tracking_ir = ir.IREyeTraking(540, 300, 160, 40)
+            eye_tracking_ir = ir.IREyeTraking(540, 320, 160, 40)
 
             for idx in tqdm(range(0, len(self.rgb8_files))):
                 image = o3d.io.read_image(self.path_rgb8 + self.rgb8_files[idx])  # öffne Bilder
@@ -88,14 +91,15 @@ class RGBDFaceDataset(Dataset):
                     image = cv2.flip(image, 0)  # Spieglen -> Bug Claymore/AzureKinect)
                     ir_image = cv2.flip(ir_image, 0)
 
-                landmarks = fan.create2DLandmarks(torch.Tensor(image[:, :, 0:3]))
+                landmarks = fan.create2DLandmarks(torch.Tensor(image[:, :, 0:3]), show=False)
 
                 x1, y1, x2, y2 = eye_tracking_ir(ir_image)
                 eyesTensor = torch.Tensor([[x1, y1], [x2, y2]])
                 landmarks = torch.cat((landmarks, eyesTensor), 0)
 
-                image, landmarks = car.cropAndResizeImageLandmarkBased(image, self.imageSize, landmarks)
-                self.landmarks[idx]  = landmarks
+                #image, landmarks = car.cropAndResizeImageLandmarkBased(image, self.imageSize, landmarks)
+                #image, landmarks = car.cropAndResizeImageDatasetBased(image, self.imageSize, landmarks, )
+                self.landmarks[idx] = landmarks
 
                 """lefteye = landmarks[36:42, :]
                 lefteye = np.mean(lefteye.numpy(), axis=0).reshape((1,2))
@@ -106,7 +110,6 @@ class RGBDFaceDataset(Dataset):
                 eyekeypoints = np.concatenate((lefteye, righteye), axis=0)
                 """
 
-
                 #if self.gaze:
                 #    eyekeypoints = eyekeypoints + self.gaze(self.rgb8_files[idx])
                 """else:
@@ -115,8 +118,21 @@ class RGBDFaceDataset(Dataset):
 
                 #self.landmarks[idx] = np.concatenate((landmarks, eyekeypoints), axis=0)
 
+
+            self.crop_region[0] = min(self.landmarks[:, :, 0].reshape(-1))
+            self.crop_region[1] = max(self.landmarks[:, :, 0].reshape(-1))
+            self.crop_region[2] = min(self.landmarks[:, :, 1].reshape(-1))
+            self.crop_region[3] = max(self.landmarks[:, :, 1].reshape(-1))
+
+            for idx in range(0, self.landmarks.shape[0]):
+                self.landmarks[idx] = car.cropAndResizeLandmarksDatasetBased(self.landmarks[idx], self.imageSize, self.crop_region)
+
             np.savetxt(path + 'Landmarks.txt', self.landmarks.reshape(-1))
             print("Landmarks saved as " + path + "Landmarks.txt")
+
+            np.savetxt(path + 'crop_region.txt', self.crop_region)
+            print("Crop-Region saved as " + path + "crop_region.txt")
+
 
             """landmarkControl = np.ndarray([68 + 2, 4])
 
@@ -170,9 +186,10 @@ class RGBDFaceDataset(Dataset):
         exit()
         """
 
-        landmarks_temp = fan.create2DLandmarks(torch.Tensor(imageRGBD[:, :, 0:3]))
-        imageRGBD = car.cropAndResizeImageLandmarkBased(imageRGBD, self.imageSize, landmarks_temp,
-                                                         computeLandmarksAgain=False)
+        #landmarks_temp = fan.create2DLandmarks(torch.Tensor(imageRGBD[:, :, 0:3]))
+        #imageRGBD = car.cropAndResizeImageLandmarkBased(imageRGBD, self.imageSize, landmarks_temp,
+        #                                                 computeLandmarksAgain=False)
+        imageRGBD = car.cropAndResizeImageDatasetBased(imageRGBD, self.imageSize, self.crop_region)
         imageRGBD[:, :, 0:3] = (imageRGBD[:, :, 0:3] - 127.5) / 127.5
         imageRGBD[:, :, 3] = (imageRGBD[:, :, 3] - 32767.5) / 32767.5
 

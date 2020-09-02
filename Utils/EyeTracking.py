@@ -69,10 +69,8 @@ def blob_process(img, threshold, detector):
 def eyeTracking(image):
 
     landmarks = np.zeros((2, 2))
-
+    """
     left_eye, right_eye, left_eye_offset_x, left_eye_offset_y, right_eye_offset_x, right_eye_offset_y = detect_eyes(image, eye_cascade)
-
-
 
     if len(left_eye) > 1:
         eye, offsetY = cut_eyebrows(left_eye)
@@ -107,7 +105,7 @@ def eyeTracking(image):
             threshold += 5;
             if threshold > 100:
                 break
-
+    """
     return landmarks
 
 
