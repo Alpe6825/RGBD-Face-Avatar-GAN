@@ -2,6 +2,10 @@ import cv2
 from skimage.metrics import structural_similarity #as ssim
 import numpy
 import time
+import matplotlib.pyplot as plt
+import open3d as o3d
+import numpy as np
+import Utils.CropAndResize as car
 
 def ssim(img1, img2):
 
@@ -20,38 +24,46 @@ def ssim(img1, img2):
     return diff
 
 
-"""
-image1 = cv2.imread('')
-image2 = cv2.imread('C:/devel/RGBD-Face-Avatar-GAN/Data/3.Durchlauf-4.Datensatz-OhneLampeImHintergrundUndOhneStuhllehne/Result/10/outputColor.png')
+def diff(img1, img2):
 
-# image1 = cv2.imread('C:/devel/RGBD-Face-Avatar-GAN/testSSIM1000.jpg') # 90% JPG C.
-# image2 = cv2.imread('C:/devel/RGBD-Face-Avatar-GAN/testSSIM10000.jpg') # nur 38 JPG
-# Convert images to grayscale
-image1_gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-image2_gray = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+    print(img1.shape, img2.shape)
 
-# Compute SSIM between two images
-(score, diff) = ssim(image1_gray, image2_gray, full=True)
-print("Image similarity:", score)
+    diff = cv2.absdiff(img1, img2)
 
-# The diff image contains the actual image differences between the two images
-# and is represented as a floating point data type in the range [0,1]
-# so we must convert the array to 8-bit unsigned integers in the range
-# [0,255] image1 we can use it with OpenCV
-diff = (diff * 255).astype("uint8")
+    plt.imshow(diff)
+    plt.show()
 
-cv2.imshow('diff', diff)
-cv2.imwrite('C:/devel/RGBD-Face-Avatar-GAN/Data/3.Durchlauf-4.Datensatz-OhneLampeImHintergrundUndOhneStuhllehne/Result/10/diff.png', diff)
 
-err = numpy.sum((image1_gray.astype("float") - image2_gray.astype("float")) ** 2)
-err /= float(image1_gray.shape[0] * image1_gray.shape[1])
-print("Image err: ", err)
-# test = cv2.norm(image1_gray, image2_gray, normType=cv2.NORM_L2)
-# cv2.imshow('test', err)
+if __name__ == "__main__":
 
-squares = (image1_gray[:,:3] - image2_gray[:,:3]) ** 2
-numpy.sum(squares)
-#cv2.imshow('test', squares)
 
-cv2.waitKey()
-"""
+    path = "//Claymore/c/GAN-Temp/test/color_and_depth_shoot_from_2020-9-4---3-27-41_depthImage_1.png"
+    depthScale = 63.25772200772201
+
+    ### Pre GAN Pipline
+
+    imageDepth16 = o3d.io.read_image(path)
+    imageDepth16 = np.asarray(imageDepth16).astype(float)
+
+    crop_region = np.array([451, 699, 286, 568])
+    imageDepth16 = car.cropAndResizeImageDatasetBased(imageDepth16, 256, crop_region)
+
+    imageDepth16 *= depthScale
+    imageDepthFloat = (imageDepth16 - 32767.5) / 32767.5
+
+    print(imageDepthFloat.min(), imageDepthFloat.max())
+
+    ### Erode cpp
+    imageDepth8 = (imageDepthFloat * 127.5 + 127.5).astype("uint8")
+    print(imageDepth8.min(), imageDepth8.max())
+
+    _, mask = cv2.threshold(imageDepth8, 127, 255, cv2.THRESH_BINARY_INV)
+    mask = cv2.erode(mask, np.ones((5,5),np.uint8), iterations=1)
+
+    imageDepth8 = imageDepth8 & mask
+
+    ### DIff
+
+    gan = cv2.imread("//Claymore/c/GAN-Temp/test/erodedDiffDepth2020-9-4---3-26-53-erodedDiff.png", cv2.IMREAD_UNCHANGED)[:,: ,3]
+    absdiff = diff(imageDepth8, gan)
+
