@@ -80,7 +80,7 @@ if __name__ == '__main__':
         epoch_loss_G = []
         for i, data in enumerate(tqdm(dataset)):
 
-            heatmap = data['RGBD'][:, 0:3, :, :].to(device)#data['Heatmap'].to(device)
+            heatmap = data['Heatmap'].to(device)
             realRGBD = data['RGBD'].to(device)
             #Vis.showDatapair(realRGBD[0], heatmap[0])
             fakeRGBD = netG(heatmap)
