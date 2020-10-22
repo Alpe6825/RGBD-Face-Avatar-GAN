@@ -93,69 +93,27 @@ def evalVis(input,heatmap,color,depth, export = True):
         cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/outputDepth.png", depth)
 
 
-def showPointCloud(x,depthScale = 1000, depth_trunc=1000, export=True):
+def showPointCloud(x,depthScale = 100, depth_trunc=1000, export=True):
     image = x.cpu().clone().detach().numpy()
     image = image.transpose(1, 2, 0)
-    height, width, color = image.shape
-    rgb = np.zeros((height, width, color-1), dtype=np.uint8)
-    depth = np.zeros((height, width), dtype=np.uint16)
 
-    for h in range(0, height):
-        for w in range(0, width):
-            rgb[h][w][0] = image[h][w][0] * 127 + 127
-            rgb[h][w][1] = image[h][w][1] * 127 + 127
-            rgb[h][w][2] = image[h][w][2] * 127 + 127
-            depth[h][w] = (image[h][w][3] * 32767 + 32767)
+    vertex = np.ndarray((256, 256, 3))
+    color = np.ndarray((256, 256, 3))
 
-    mask = depth/65535*255
-    _, mask = cv.threshold(mask, 127, 255, cv.THRESH_BINARY_INV)
+    for y in range(0, 255):
+        for x in range(0, 255):
+            vertex[x, y] = np.array([x, y, image[y, x, 3] * 127 + 127])
+            color[x, y] = (image[y, x, 0:3] + 1)/2
 
-    kernel = np.ones((5, 5), np.uint8)
-    mask2 = cv.erode(mask, kernel, iterations=1)
-    depth = (depth * (mask2 / 255)).astype(np.uint16)
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(vertex.reshape((-1, 3)))
+    pcd.colors = o3d.utility.Vector3dVector(color.reshape((-1, 3)))
 
-    """
-    hist = cv.calcHist([depth], [0], None, [65536], [0, 65536])
-    hist[0] = 0
-    min_i = 0
-    while hist[min_i, 0] == 0:
-        min_i += 1
-    max_i = 65535
-    while hist[max_i, 0] == 0:
-        max_i -= 1
-    print(min_i,max_i)
-
-    hist = cv.calcHist([depth], [0], None, [max_i-min_i], [min_i, max_i])
-    plt.plot(hist)
-    plt.show()
-
-    depth = depth.reshape(-1)
-    depth -= min_i
-    print(depth.shape)
-    depth = (depth.astype(float)/(max_i-min_i)*255*0.5).astype(np.uint8).reshape(256,256)
-    """
-
-    # depth = cv.GaussianBlur(depth, (3, 3), 0)
-
-    color_raw = o3d.geometry.Image(rgb)
-    depth_raw = o3d.geometry.Image(depth)
-
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
-        color_raw, depth_raw, depth_scale=depthScale, depth_trunc=depth_trunc, convert_rgb_to_intensity=False)
-
-    azure = o3d.camera.PinholeCameraIntrinsic()
-    azure.set_intrinsics(height=1080, width=1920,
-                         fx=916.9168701171875, fy=916.5850830078125,
-                         cx=150, cy=200)
-
-    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
-        rgbd_image, azure)
-    # Flip it, otherwise the pointcloud will be upside down
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 
     if export == True:
-        o3d.visualization.draw_geometries([pcd])
-        o3d.io.write_point_cloud("Result/Snaps/PointCloud.pts", pcd)
+        o3d.visualization.draw_geometries_with_editing([pcd])
+        o3d.io.write_point_cloud("Data/" + config.DatasetName + "/Result/Snaps/PointCloud.pts", pcd)
     else:
         return pcd
 

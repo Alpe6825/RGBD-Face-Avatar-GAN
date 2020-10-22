@@ -69,10 +69,11 @@ class FacialLandmarkController():
             self.updateCanvas(1, hd.drawHeatmap(self.neutralProfil2,256)[:,:,0:3])
 
     def _loadButton(self):
-        #name = filedialog.askopenfilename()
-        #print(name)
+        name = filedialog.askopenfilename()
+        print(name)
 
-        self.loadedLandmarks = np.loadtxt('Data/' + config.DatasetName + '/Landmarks.txt', dtype=float).reshape((-1, 2))
+        self.loadedLandmarks = np.loadtxt(name, dtype=float).reshape((-1, 2))
+        #self.loadedLandmarks = np.loadtxt('Data/' + config.DatasetName + '/Landmarks.txt', dtype=float).reshape((-1, 2))
 
         self.loadedProfil = Image.new('RGB', (256, 256), (0, 0, 0))
         draw = ImageDraw.Draw(self.loadedProfil)

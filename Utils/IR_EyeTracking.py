@@ -38,14 +38,14 @@ def detect_eyes(img, cascade=cv2.CascadeClassifier('haarcascade_eye.xml')):
 
 class IREyeTraking:
 
-    def __init__(self, x, y, w, h):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
+    def __init__(self, _x, _y, _w, _h):
+        self.x = _x
+        self.y = _y
+        self.w = _w
+        self.h = _h
 
         cv2.namedWindow("window2")
-        cv2.createTrackbar("Thresh", "window2", 120, 255, nothing) #106
+        cv2.createTrackbar("Thresh", "window2", 160, 255, nothing) #106
 
     def __call__(self, image) -> (int, int, int, int):
         image = cv2.equalizeHist(image)

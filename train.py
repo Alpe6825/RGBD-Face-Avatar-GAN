@@ -22,16 +22,18 @@ if __name__ == '__main__':
     if not os.path.exists("Data/" + config.DatasetName + "/Result/"):
         os.mkdir("Data/" + config.DatasetName + "/Result/")
         os.mkdir("Data/" + config.DatasetName + "/Result/Snaps/")
+        os.mkdir("Data/" + config.DatasetName + "/Result/Examples/")
+        os.mkdir("Data/" + config.DatasetName + "/Result/Weights/")
 
     ### Define Networks ###
 
-    netG = pix2pixG.UnetGenerator(input_nc=4, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=True)
+    netG = pix2pixG.UnetGenerator(input_nc= config.INPUT_CHANNEL, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=True)
     netG = pix2pixInit.init_net(netG, gpu_ids=[0])
-    summary(netG, (4,256,256))
+    summary(netG, (config.INPUT_CHANNEL, 256, 256))
 
-    netD = pix2pixD.NLayerDiscriminator(input_nc=8, ndf=64, n_layers=3, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True))
+    netD = pix2pixD.NLayerDiscriminator(input_nc=config.INPUT_CHANNEL + 4, ndf=64, n_layers=3, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True))
     netD = pix2pixInit.init_net(netD, gpu_ids=[0])
-    summary(netD, (8, 256, 256))
+    summary(netD, (config.INPUT_CHANNEL + 4, 256, 256))
 
     ### Load Exsting Model State ###
 
@@ -73,12 +75,12 @@ if __name__ == '__main__':
     dataset = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
     for epoch in range(startEpoch, 200 + 1):
-        print("Epoche: ", epoch, "(LearningRates:", scheduler_G.get_last_lr(), scheduler_D.get_last_lr(),")")
+        print("Epoche: ", epoch, "(LearningRates:", scheduler_G.get_last_lr(), scheduler_D.get_last_lr(), ")")
         epoch_loss_D = []
         epoch_loss_G = []
         for i, data in enumerate(tqdm(dataset)):
 
-            heatmap = data['Heatmap'].to(device)
+            heatmap = data['RGBD'][:, 0:3, :, :].to(device)#data['Heatmap'].to(device)
             realRGBD = data['RGBD'].to(device)
             #Vis.showDatapair(realRGBD[0], heatmap[0])
             fakeRGBD = netG(heatmap)
@@ -135,8 +137,8 @@ if __name__ == '__main__':
         torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator.pth")
 
         if epoch % 10 == 0:
-            torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedGenerator_epoch_" + str(epoch) + ".pth")
-            torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/trainedDiscriminator_" + str(epoch) + ".pth")
+            torch.save(netG.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/Weights/trainedGenerator_epoch_" + str(epoch) + ".pth")
+            torch.save(netD.cpu().state_dict(), "Data/" + config.DatasetName + "/Result/Weights/trainedDiscriminator_epoch_" + str(epoch) + ".pth")
 
         ### Trace Modell ###
 
@@ -154,10 +156,10 @@ if __name__ == '__main__':
 
         ### Export Sample Image ###
 
-        Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/example_" + str(epoch) +".png")
+        Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/Examples/example_" + str(epoch) +".png")
 
     ### ONNX ####
-    x = torch.randn(1, 4, 256, 256, requires_grad=True)
+    x = torch.randn(1, config.INPUT_CHANNEL, 256, 256, requires_grad=True)
     torch.onnx.export(netG.to("cpu"),  # model being run
                       x,  # model input (or a tuple for multiple inputs)
                       "Data/" + config.DatasetName + "/Result/tracedGenerator.onnx",  # where to save the model (can be a file or file-like object)

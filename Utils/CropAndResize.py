@@ -109,6 +109,16 @@ def cropAndResizeImageDatasetBased(image, imageSize, crop_region):
     min_y = crop_region[2]
     max_y = crop_region[3]
 
+    delta_x = max_x - min_x
+    delta_y = max_y - min_y
+
+    if delta_x > delta_y:
+        min_y = min_y - (delta_x - delta_y) / 2
+        max_y = max_y + (delta_x - delta_y) / 2
+    if delta_y > delta_x:
+        min_x = min_x - (delta_y - delta_x) / 2
+        max_x = max_x + (delta_y - delta_x) / 2
+
     # edit Image
     image = image[int(min_y):int(max_y), int(min_x):int(max_x)]
     image = cv2.resize(image, (imageSize, imageSize))
