@@ -107,6 +107,15 @@ class IREyeTraking:
         cv2.imshow("IR-Image", image)
         cv2.waitKey(1)
 
+        if x1 == 0 and y1 == 0:
+            y1 += self.y + int(self.h / 2)
+            x1 += self.x + int(self.w / 4)
+
+        if x2 == 0 and y2 == 0:
+            y2 += self.y + int(self.h / 2)
+            x2 += self.x + int(self.w / 4) * 3
+
+
         return x1, y1, x2, y2
 
 
