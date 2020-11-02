@@ -93,7 +93,7 @@ def evalVis(input,heatmap,color,depth, export = True):
         cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/outputDepth.png", depth)
 
 
-def showPointCloud(x, depth_trunc=250, transform = None, export=True):
+def showPointCloud(x, depth_trunc=config.DEPTH_MAX-5, depth_scale = 1, transform = None, export=True):
 
     if torch.is_tensor(x):
         image = x.cpu().clone().detach().numpy()
@@ -106,7 +106,8 @@ def showPointCloud(x, depth_trunc=250, transform = None, export=True):
 
     for y in range(0, 255):
         for x in range(0, 255):
-            z = image[y, x, 3] * 127.5 + 127.5
+            z = image[y, x, 3] * (config.DEPTH_MAX/2) + (config.DEPTH_MAX/2)
+            z *= depth_scale
             if z <= depth_trunc:
                 vertex[x, y] = np.array([x, y, z])
                 color[x, y] = (image[y, x, 0:3] + 1)/2
