@@ -44,8 +44,11 @@ class IREyeTraking:
         self.w = _w
         self.h = _h
 
+        cv2.namedWindow("IR-Image")
+        cv2.imshow("IR-Image", np.zeros((1000, 1000, 3)))
+
         cv2.namedWindow("window2")
-        cv2.createTrackbar("Thresh", "window2", 160, 255, nothing) #106
+        cv2.createTrackbar("Thresh", "IR-Image", 160, 255, nothing) #106
 
     def __call__(self, image) -> (int, int, int, int):
         image = cv2.equalizeHist(image)
@@ -56,7 +59,7 @@ class IREyeTraking:
         roi[:, int(self.w / 3):int(self.w / 3) * 2] = 255
 
         roi = cv2.GaussianBlur(roi, (11, 11), 0)
-        thresh = cv2.getTrackbarPos("Thresh", "window2")
+        thresh = cv2.getTrackbarPos("Thresh", "IR-Image")
         _, roi = cv2.threshold(roi, thresh, 255, cv2.THRESH_BINARY_INV)
 
         kernel = np.ones((5, 5), np.uint8)

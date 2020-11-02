@@ -6,6 +6,7 @@ INPUT_CHANNEL = 1
 
 # Depth Image
 DEPTH_OFFSET = 300
+DEPTH_MAX = 256 - 1
 
 # IREyeTracking
 IRET_Region = {
@@ -14,3 +15,7 @@ IRET_Region = {
     "width": 160,
     "height": 40
 }
+
+# Test
+TEST_INPUT = "Camera" # or "OSC"
+USE_FLC = True

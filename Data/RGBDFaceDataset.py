@@ -1,4 +1,4 @@
-# Last edit 20.10.2020
+# Last edit 28.10.2020
 import os
 import numpy as np
 import open3d as o3d
@@ -43,7 +43,6 @@ class RGBDFaceDataset(Dataset):
         self.imageSize = imageSize
         self.transforms = torchvision.transforms.Compose([torchvision.transforms.RandomAffine((-5, 5), scale=(0.98, 1), shear=None, resample=False, fillcolor=0),
                                                           torchvision.transforms.ToTensor()])
-
 
         self.landmarks = np.ndarray([len(self.rgb8_files), 68 + 2, 2])
         self.crop_region = np.zeros(4)
@@ -122,14 +121,14 @@ class RGBDFaceDataset(Dataset):
             for y in range(0, imageDepth16.shape[0]):
                 temp = imageDepth16[y, x]
                 if temp <= 0:
-                    temp = 255
-                if temp > 255:
-                    temp = 255
+                    temp = config.DEPTH_MAX
+                if temp > config.DEPTH_MAX:
+                    temp = config.DEPTH_MAX
                 imageRGBD[y, x, 3] = temp
 
         imageRGBD = car.cropAndResizeImageDatasetBased(imageRGBD, self.imageSize, self.crop_region)
         imageRGBD[:, :, 3] = self.apply_depthmask(imageRGBD[:, :, 3])
-        imageRGBD = (imageRGBD - 127.5) / 127.5
+        imageRGBD = (imageRGBD - config.DEPTH_MAX/2) / (config.DEPTH_MAX/2)
 
         imageRGBD = imageRGBD.transpose(2, 0, 1)
         imageRGBD = torch.Tensor(imageRGBD)
@@ -143,12 +142,14 @@ class RGBDFaceDataset(Dataset):
         return sample
 
     def apply_depthmask(self, img):
-        ret, mask = cv2.threshold(img, 10, 1, cv2.THRESH_BINARY)
+        ret, mask = cv2.threshold(img, config.DEPTH_MAX-5, 1, cv2.THRESH_BINARY_INV) #10
         # plt.imshow(mask)
         # plt.show()
         kernel = np.ones((3, 3), np.uint8)
         mask = cv2.erode(mask, kernel, iterations=1)
-        img = img * mask
+        # plt.imshow(img)
+        # plt.show()
+        img = img * mask + (1 - mask) * config.DEPTH_MAX # img = img * mask
         # plt.imshow(img)
         # plt.show()
         # print("applied mask", np.min(img[np.nonzero(img)]), img.max())
@@ -168,4 +169,3 @@ if __name__ == '__main__':
         vis.showPointCloud(sample["RGBD"])
         exit()
         vis.exportExample(sample['RGBD'], sample['Heatmap'], "Data/" + config.DatasetName + "/Visualization/" + str(i) + ".png")
-

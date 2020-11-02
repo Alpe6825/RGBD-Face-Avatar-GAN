@@ -11,6 +11,12 @@ import Utils.FaceAlignmentNetwork as fan
 import Utils.IR_EyeTracking as ir
 import Utils.HeatmapDrawing as hd
 import os
+import Pix2PixGAN.Generator as pix2pixG
+import Pix2PixGAN.Initialization as pix2pixInit
+import functools
+import configFile as config
+import torch.nn as nn
+import Utils.Visualization as vis
 
 def ssim(img1, img2, range8bit=False):
 
@@ -51,14 +57,29 @@ def rotate_image(image, angle):
   result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
   return result
 
-if __name__ == "__main__":
-    mk_path = "C:/Users/Alexander Pech/Desktop/SortedErodesV2/neuesNeutralBild/"
 
-    path_GAN = mk_path + "gan" + ".png"
+def apply_depthmask(img):
+    ret, mask = cv2.threshold(img, 250, 1, cv2.THRESH_BINARY_INV)
+    #plt.imshow(mask)
+    #plt.show()
+    kernel = np.ones((3, 3), np.uint8)
+    mask = cv2.erode(mask, kernel, iterations=1)
+    #plt.imshow(img)
+    #plt.show()
+    img = img * mask + (1 - mask) * 255
+    #plt.imshow(img)
+    #plt.show()
+    # print("applied mask", np.min(img[np.nonzero(img)]), img.max())
+    return img
+
+if __name__ == "__main__":
+    mk_path = "C:/Users/Alexander Pech/Desktop/____finale Auswahl NEU3/H/"
+
+    #path_GAN = mk_path + "gan" + ".png"
     path_IR = mk_path + "ir"  + ".png"
     path_rgb = mk_path + "rgb"  + ".png"
     path_depth = mk_path + "depth"  + ".png"
-    depthScale = 63.25772200772201
+    #depthScale = 63.25772200772201
 
     cv2.namedWindow("image")
     cv2.createTrackbar('X', 'image', 25, 50, nothing)
@@ -67,90 +88,137 @@ if __name__ == "__main__":
     cv2.createTrackbar('H', 'image', 25, 50, nothing)
     cv2.createTrackbar('R', 'image', 25, 50, nothing)
 
+    if os.path.exists(mk_path + "eval/"):
+        poses = np.loadtxt(mk_path + "eval/TrackbarPosesForCropss.txt", dtype=int)
+        cv2.setTrackbarPos('X', 'image', poses[0])
+        cv2.setTrackbarPos('Y', 'image', poses[1])
+        cv2.setTrackbarPos('W', 'image', poses[2])
+        cv2.setTrackbarPos('H', 'image', poses[3])
+        cv2.setTrackbarPos('R', 'image', poses[4])
+
+
+    netG = pix2pixG.UnetGenerator(input_nc=1, output_nc=4, num_downs=8, ngf=64,
+                                  norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True),
+                                  use_dropout=False)
+    netG = pix2pixInit.init_net(netG)
+    netG.load_state_dict(torch.load("Data/" + config.DatasetName + "/Result/trainedGenerator.pth"))
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    netG.eval().to(device)
+
+    eye_tracking_ir = ir.IREyeTraking(500, 330, 170, 30)
+
     ### Pre GAN Pipline
     start = time.time()
     while True:
-
-        imageDepth16 = o3d.io.read_image(path_depth)
-        imageDepth16 = np.asarray(imageDepth16).astype(float)
-        imageDepth16 = rotate_image(imageDepth16, cv2.getTrackbarPos("R", "image")-25)
 
         crop_region = np.array([451 + cv2.getTrackbarPos("X", "image") - 25,
                                 699 + cv2.getTrackbarPos("W", "image") - 25,
                                 286 + cv2.getTrackbarPos("Y", "image") - 25,
                                 568 + cv2.getTrackbarPos("H", "image") - 25])
+
+        debug = np.zeros((512, 1024, 3))
+
+        ### realDepth
+
+        imageDepth16 = o3d.io.read_image(path_depth)
+        imageDepth16 = np.asarray(imageDepth16).astype(float)
+        imageDepth16 = rotate_image(imageDepth16, cv2.getTrackbarPos("R", "image") - 25)
         imageDepth16 = car.cropAndResizeImageDatasetBased(imageDepth16, 256, crop_region)
 
-        imageDepth16 *= depthScale
-        imageDepthFloat = (imageDepth16 - 32767.5) / 32767.5
+        imageDepth16 = imageDepth16 - config.DEPTH_OFFSET
+        for x in range(0, imageDepth16.shape[1]):
+            for y in range(0, imageDepth16.shape[0]):
+                temp = imageDepth16[y, x]
+                if temp <= 0:
+                    temp = 255
+                if temp > 255:
+                    temp = 255
+                imageDepth16[y, x] = temp
 
-        #print(imageDepthFloat.min(), imageDepthFloat.max())
+        imageDepth8 = imageDepth16.astype("uint8")
+        imageDepth8 = apply_depthmask(imageDepth8)
 
-        ### Erode cpp
-        imageDepth8 = (imageDepthFloat * 127.5 + 127.5).astype("uint8")
-        """"t = (imageDepth8.max() - imageDepth8.min())/4 + imageDepth8.min()
+        debug[256:512, 256:512, 0] = imageDepth8
+        debug[256:512, 256:512, 1] = imageDepth8
+        debug[256:512, 256:512, 2] = imageDepth8
 
-        _, mask = cv2.threshold(imageDepth8, int(t), 255, cv2.THRESH_BINARY)
-        mask = cv2.erode(mask, np.ones((5,5),np.uint8), iterations=1)
-
-        imageDepth8 = imageDepth8 & mask"""
-        #cv2.imshow("mask", imageDepth8)
-        #cv2.waitKey(100000)
-        #exit()
-        hist = cv2.calcHist([imageDepth8], [0], None, [75], [75, 150])
-        plt.plot(hist)
-
-        ### DIff
-
-        gan = cv2.imread(path_GAN, cv2.IMREAD_UNCHANGED)
-        absdiff = diff(imageDepth8, gan[:, :, 3])
-        hist2 = cv2.calcHist([gan[:, :, 3]], [0], None, [75], [75, 150])
-        plt.plot(hist2)
-        plt.show()
-
-        ### FAN
+        ### realRGB & FAN
 
         imageRGB8 = cv2.imread(path_rgb, cv2.IMREAD_UNCHANGED)
-        imageRGB8 = rotate_image(imageRGB8, cv2.getTrackbarPos("R", "image")-25)
-
+        imageRGB8 = rotate_image(imageRGB8, cv2.getTrackbarPos("R", "image") - 25)
 
         landmarks = fan.create2DLandmarks(torch.Tensor(imageRGB8[:, :, 0:3]), show=False)
-        eye_tracking_ir = ir.IREyeTraking(500, 330, 160, 40)
-        x1, y1, x2, y2 = eye_tracking_ir(cv2.imread(path_IR, cv2.IMREAD_GRAYSCALE))
+
+        ir_image = cv2.imread(path_IR, cv2.IMREAD_GRAYSCALE)
+        ir_image = rotate_image(ir_image, cv2.getTrackbarPos("R", "image") - 25)
+        x1, y1, x2, y2 = eye_tracking_ir(ir_image)
         eyesTensor = torch.Tensor([[x1, y1], [x2, y2]])
-        #print(eyesTensor)
+        # print(eyesTensor)
         landmarks = torch.cat((landmarks, eyesTensor), 0)
-
         landmarks = car.cropAndResizeLandmarksDatasetBased(landmarks, 256, crop_region)
-
         fourChannelHeatmap = hd.drawHeatmap(landmarks, 256, returnType="numpy")
 
         imageRGB8 = car.cropAndResizeImageDatasetBased(imageRGB8, 256, crop_region)
 
+        ret, mask = cv2.threshold(imageDepth8, 110, 1, cv2.THRESH_BINARY_INV)
+        mask[30:180, 65:190] = 1
+        imageRGB8[:, :, 0] *= mask
+        imageRGB8[:, :, 1] *= mask
+        imageRGB8[:, :, 2] *= mask
+
+
+        debug[0:256, 0:256, :] = fourChannelHeatmap[:, :, 0:3]
+        debug[0:256, 256:512, :] = imageRGB8[:, :, 0:3]
+
+        ### GAN
+        heatmap = (fourChannelHeatmap[:, :, 1] - 127.5) / 127.5
+
+        gan = netG(torch.Tensor(heatmap).unsqueeze(0).unsqueeze(0).to(device))
+        gan = gan[0].cpu().detach().numpy().transpose((1, 2, 0))
+        gan = ((gan + 1) * 127.5).astype("uint8")
+
+        gan[:, :, 3] = apply_depthmask(gan[:, :, 3])
+        gan[:, :, 3] = apply_depthmask(gan[:, :, 3])
+
+        gan_orig = np.copy(gan)
+        ret, mask = cv2.threshold(gan[:, :, 3], 110, 1, cv2.THRESH_BINARY_INV)
+        gan[:, :, 0] *= mask
+        gan[:, :, 1] *= mask
+        gan[:, :, 2] *= mask
+
+        debug[0:256, 512:768, :] = cv2.cvtColor(gan[:, :, 0:3], cv2.COLOR_RGB2BGR)
+        debug[256:512, 512:768, 0] = gan[:, :, 3]
+        debug[256:512, 512:768, 1] = gan[:, :, 3]
+        debug[256:512, 512:768, 2] = gan[:, :, 3]
+
         ### SSIM
-        score, ssim_image = ssim(imageRGB8, gan[:, :, 0:3], range8bit=True)
+        score, ssim_image = ssim(imageRGB8, cv2.cvtColor(gan[:, :, 0:3], cv2.COLOR_RGB2BGR), range8bit=True)
+        debug[0:256, 768:1024, 0] = ssim_image
+        debug[0:256, 768:1024, 1] = ssim_image
+        debug[0:256, 768:1024, 2] = ssim_image
 
-        _image = np.concatenate((ssim_image/1, absdiff/1, absdiff*50/1), axis=1).astype("uint8")
-        _image = cv2.cvtColor(_image, cv2.COLOR_GRAY2BGR)
-        _image = np.concatenate((_image, imageRGB8[:, :, 0:3], gan[:, :, 0:3]), axis=1)
+        ### Diff Depths + Hist
 
-        #print(time.time() - start)
-        start = time.time()
-        cv2.imshow("image", _image)
+        absdiff = diff(imageDepth8, gan[:, :, 3])
+
+        debug[256:512, 768:1024, 0] = absdiff * 21
+        debug[256:512, 768:1024, 1] = absdiff * 21
+        debug[256:512, 768:1024, 2] = absdiff * 21
+
+        cv2.imshow("image", debug.astype("uint8"))
         if cv2.waitKey(1) & 0xFF == ord('s'):
             break
 
     ### Safe
     mk_path += "eval/"
-    os.mkdir(mk_path)
+    if not os.path.exists(mk_path):
+        os.mkdir(mk_path)
 
     cv2.imwrite(mk_path + "DerGeraet_RGB.png", imageRGB8)
     cv2.imwrite(mk_path + "DerGeraet_Depth.png", imageDepth8)
 
-    cv2.imwrite(mk_path + "GAN_RGB.png", gan[:, :, 0:3])
+    cv2.imwrite(mk_path + "GAN_RGB.png", cv2.cvtColor(gan[:, :, 0:3], cv2.COLOR_RGB2BGR))
     cv2.imwrite(mk_path + "GAN_Depth.png", gan[:, :, 3])
-
-    #cv2.imwrite(mk_path + "Diff_Depth.png", absdiff)
 
     cv2.imwrite(mk_path + "SSIM_RGB.png", ssim_image)
     np.savetxt(mk_path + "ssim_score.txt", np.array([score]))
@@ -158,36 +226,47 @@ if __name__ == "__main__":
     cv2.imwrite(mk_path + "FAN.png", fourChannelHeatmap[:, :, 0])
 
     plt.imshow(absdiff)
-    plt.colorbar()
+    plt.colorbar(label="Difference (mm)")
     plt.axis('off')
+    plt.clim(0, 13)
     plt.savefig(mk_path + "Diff_Depth.png", format="png" )
+    plt.close()
 
-    while True:
-        pass
-    """
+    hist = cv2.calcHist([imageDepth8], [0], None, [254], [0, 254])
+    plt.plot(hist, label="Ground Truth")
+    hist2 = cv2.calcHist([gan[:, :, 3]], [0], None, [254], [0, 254])
+    plt.plot(hist2, label="Prediction")
+    plt.legend(loc="upper right")
+    plt.title("Depth Histogram:")
+    plt.xlabel("Depth (mm)")
+    plt.ylabel("Number of Pixels")
+    plt.savefig(mk_path + "Depth_Histo.png", format="png")
 
-    color_raw = o3d.io.read_image("C:/Users/Alexander Pech/Desktop/SortedErodes/New folder - Neutral sehr gut/eval/GAN_RGB.png")
-    depth_raw = o3d.io.read_image("C:/Users/Alexander Pech/Desktop/SortedErodes/New folder - Neutral sehr gut/eval/GAN_Depth.png")
+    trackbars = np.array([cv2.getTrackbarPos("X", "image"),
+                          cv2.getTrackbarPos("Y", "image"),
+                          cv2.getTrackbarPos("W", "image"),
+                          cv2.getTrackbarPos("H", "image"),
+                          cv2.getTrackbarPos("R", "image"),
+                          ])
+    np.savetxt(mk_path + "TrackbarPosesForCropss.txt", trackbars)
 
-    #depth_raw = (np.asarray(depth_raw)).astype("float")
-    #_min = depth_raw.min()
-    #_max = depth_raw.max()
+    rgbd = np.zeros((256, 256, 4))
+    rgbd[:, :, 0:3] = (gan_orig[:, :, 0:3] - 127.5) / 127.5
+    rgbd[:, :, 3] = (gan_orig[:, :, 3] - 127.5) / 127.5
 
-    depth_raw = o3d.geometry.Image(depth_raw)
+    # Tool: https://www.andre-gaschler.com/rotationconverter/
+    trans = [[0.8663667,  0.0445444,  0.4974178, 0],
+             [0.0445444,  0.9851518, -0.1658060, 0],
+             [-0.4974178,  0.1658060,  0.8515186, 0],
+             [0, 0, 0, 1]]
 
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
-        color_raw, depth_raw, depth_scale=1000, depth_trunc=1000, convert_rgb_to_intensity=False)
+    vis.showPointCloud(rgbd,  transform=trans)
 
-    azure = o3d.camera.PinholeCameraIntrinsic()
-    azure.set_intrinsics(height=1080, width=1920,
-                         fx=916.9168701171875, fy=916.5850830078125,
-                         cx=150, cy=200)
+    trans = [[0.0000000, 0.0000000, -1.0000000, 0.0000000],
+             [0.0000000, 1.0000000, 0.0000000, 0.0000000],
+             [1.0000000, 0.0000000, 0.0000000, 0.0000000],
+             [0, 0, 0, 1]]
+    vis.showPointCloud(rgbd, transform=trans)
 
-    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
-        rgbd_image, azure)
-    # Flip it, otherwise the pointcloud will be upside down
-    pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 
-    o3d.visualization.draw_geometries([pcd])
-    """
 

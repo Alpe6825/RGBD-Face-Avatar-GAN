@@ -93,23 +93,32 @@ def evalVis(input,heatmap,color,depth, export = True):
         cv.imwrite("Data/" + config.DatasetName + "/Result/Snaps/outputDepth.png", depth)
 
 
-def showPointCloud(x,depthScale = 100, depth_trunc=1000, export=True):
-    image = x.cpu().clone().detach().numpy()
-    image = image.transpose(1, 2, 0)
+def showPointCloud(x, depth_trunc=250, transform = None, export=True):
+
+    if torch.is_tensor(x):
+        image = x.cpu().clone().detach().numpy()
+        image = image.transpose(1, 2, 0)
+    else:
+        image = x
 
     vertex = np.ndarray((256, 256, 3))
     color = np.ndarray((256, 256, 3))
 
     for y in range(0, 255):
         for x in range(0, 255):
-            vertex[x, y] = np.array([x, y, image[y, x, 3] * 127 + 127])
-            color[x, y] = (image[y, x, 0:3] + 1)/2
+            z = image[y, x, 3] * 127.5 + 127.5
+            if z <= depth_trunc:
+                vertex[x, y] = np.array([x, y, z])
+                color[x, y] = (image[y, x, 0:3] + 1)/2
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(vertex.reshape((-1, 3)))
     pcd.colors = o3d.utility.Vector3dVector(color.reshape((-1, 3)))
 
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
+    if transform is not None:
+        pcd.transform(transform)
 
     if export == True:
         o3d.visualization.draw_geometries_with_editing([pcd])
