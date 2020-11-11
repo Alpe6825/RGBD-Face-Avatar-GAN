@@ -7,6 +7,7 @@ import Pix2PixGAN.Initialization as pix2pixInit
 import Pix2PixGAN.GANLoss as pix2pixLoss
 import functools
 import Data.RGBDFaceDataset as rgbdDataset
+#import Data.MelSpecDataset as rgbdDataset
 import Utils.Visualization as Vis
 from tqdm import tqdm
 from os import path
@@ -16,6 +17,7 @@ import onnx
 import os
 import configFile as config
 import statistics
+import math
 
 if __name__ == '__main__':
 
@@ -27,13 +29,14 @@ if __name__ == '__main__':
 
     ### Define Networks ###
 
-    netG = pix2pixG.UnetGenerator(input_nc= config.INPUT_CHANNEL, output_nc=4, num_downs=8, ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=True)
+    netG = pix2pixG.UnetGenerator(input_nc= config.INPUT_CHANNEL, output_nc=4, num_downs=int(math.log2(config.IMAGE_SIZE)), ngf=64, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True), use_dropout=True)
     netG = pix2pixInit.init_net(netG, gpu_ids=[0])
-    summary(netG, (config.INPUT_CHANNEL, 256, 256))
+    summary(netG, (config.INPUT_CHANNEL, config.IMAGE_SIZE, config.IMAGE_SIZE))
 
-    netD = pix2pixD.NLayerDiscriminator(input_nc=config.INPUT_CHANNEL + 4, ndf=64, n_layers=3, norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True))
+
+    netD = pix2pixD.NLayerDiscriminator(input_nc=config.INPUT_CHANNEL + 4, ndf=64, n_layers=int(math.log2(config.IMAGE_SIZE) - 5), norm_layer=functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True))
     netD = pix2pixInit.init_net(netD, gpu_ids=[0])
-    summary(netD, (config.INPUT_CHANNEL + 4, 256, 256))
+    summary(netD, (config.INPUT_CHANNEL + 4, config.IMAGE_SIZE, config.IMAGE_SIZE))
 
     ### Load Exsting Model State ###
 
@@ -71,7 +74,7 @@ if __name__ == '__main__':
 
     ### Training ###
 
-    dataset = rgbdDataset.RGBDFaceDataset(imageSize=256, path="Data/" + config.DatasetName + "/")
+    dataset = rgbdDataset.RGBDFaceDataset(imageSize=config.IMAGE_SIZE, path="Data/" + config.DatasetName + "/")
     dataset = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
     for epoch in range(startEpoch, 200 + 1):
@@ -155,8 +158,8 @@ if __name__ == '__main__':
         #Vis.showDatapair(temp[0],heatmap[0])
 
         ### Export Sample Image ###
-
-        Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/Examples/example_" + str(epoch) +".png")
+        if fakeRGBD[0].shape[0] == 4 and heatmap[0].shape[0] == 1:
+            Vis.exportExample(fakeRGBD[0], heatmap[0], "Data/" + config.DatasetName + "/Result/Examples/example_" + str(epoch) +".png")
 
     ### ONNX ####
     x = torch.randn(1, config.INPUT_CHANNEL, 256, 256, requires_grad=True)

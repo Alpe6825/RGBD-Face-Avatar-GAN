@@ -114,7 +114,7 @@ class RGBDFaceDataset(Dataset):
             exit()
 
         imageRGBD = np.ndarray([imageRGB8.shape[0], imageRGB8.shape[1], 4])
-        imageRGBD[:, :, 0:3] = imageRGB8
+        imageRGBD[:, :, 0:3] = imageRGB8[:, :, 0:3]
 
         imageDepth16 = imageDepth16 - config.DEPTH_OFFSET
         for x in range(0, imageDepth16.shape[1]):
@@ -138,7 +138,7 @@ class RGBDFaceDataset(Dataset):
         fourChannelHeatmap = self.transforms(fourChannelHeatmap_PIL)
         fourChannelHeatmap = fourChannelHeatmap*2-1
 
-        sample = {'RGBD': imageRGBD, 'Heatmap': fourChannelHeatmap}
+        sample = {'RGBD': imageRGBD, 'Heatmap': fourChannelHeatmap[0].unsqueeze(0)}
         return sample
 
     def apply_depthmask(self, img):
@@ -158,7 +158,7 @@ class RGBDFaceDataset(Dataset):
 
 if __name__ == '__main__':
 
-    rgbdFaceDataset = RGBDFaceDataset(imageSize=256, path="Data/" + config.DatasetName + "/")
+    rgbdFaceDataset = RGBDFaceDataset(imageSize=config.IMAGE_SIZE, path="Data/" + config.DatasetName + "/")
 
     if not os.path.exists("Data/" + config.DatasetName + "/Visualization/"):
         os.mkdir("Data/" + config.DatasetName + "/Visualization/")
@@ -166,6 +166,6 @@ if __name__ == '__main__':
     print("Visualization:")
     for i in tqdm(range(0, len(rgbdFaceDataset))):
         sample = rgbdFaceDataset[i]
-        vis.showPointCloud(sample["RGBD"])
-        exit()
         vis.exportExample(sample['RGBD'], sample['Heatmap'], "Data/" + config.DatasetName + "/Visualization/" + str(i) + ".png")
+
+    vis.showPointCloud(sample["RGBD"])
