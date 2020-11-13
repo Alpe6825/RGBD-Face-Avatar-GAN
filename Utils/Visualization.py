@@ -42,12 +42,12 @@ def exportExample(image, heatmaps, path):
     image = image.cpu().clone().detach().numpy()
     heatmaps = heatmaps.cpu().clone().detach().numpy()
 
-    compl = np.zeros([3, 256, 512+256])
-    compl[:, :, 0:256] = heatmaps[0:3, :, :]
-    compl[:, :, 256:512] = image[0:3, :, :]
-    compl[0, :, 512:768] = image[3, :, :]
-    compl[1, :, 512:768] = image[3, :, :]
-    compl[2, :, 512:768] = image[3, :, :]
+    compl = np.zeros([3, config.IMAGE_SIZE, config.IMAGE_SIZE*3])
+    compl[:, :, 0:config.IMAGE_SIZE] = heatmaps[0:3, :, :]
+    compl[:, :, config.IMAGE_SIZE:config.IMAGE_SIZE*2] = image[0:3, :, :]
+    compl[0, :, config.IMAGE_SIZE*2:config.IMAGE_SIZE*3] = image[3, :, :]
+    compl[1, :, config.IMAGE_SIZE*2:config.IMAGE_SIZE*3] = image[3, :, :]
+    compl[2, :, config.IMAGE_SIZE*2:config.IMAGE_SIZE*3] = image[3, :, :]
 
     compl = compl.transpose(1, 2, 0)
     compl = compl * 127.5 + 127.5
@@ -101,11 +101,11 @@ def showPointCloud(x, depth_trunc=config.DEPTH_MAX-5, depth_scale = 1, transform
     else:
         image = x
 
-    vertex = np.ndarray((256, 256, 3))
-    color = np.ndarray((256, 256, 3))
+    vertex = np.ndarray((config.IMAGE_SIZE, config.IMAGE_SIZE, 3))
+    color = np.ndarray((config.IMAGE_SIZE, config.IMAGE_SIZE, 3))
 
-    for y in range(0, 255):
-        for x in range(0, 255):
+    for y in range(0, config.IMAGE_SIZE):
+        for x in range(0, config.IMAGE_SIZE):
             z = image[y, x, 3] * (config.DEPTH_MAX/2) + (config.DEPTH_MAX/2)
             z *= depth_scale
             if z <= depth_trunc:

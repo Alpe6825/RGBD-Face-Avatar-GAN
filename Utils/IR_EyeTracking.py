@@ -1,40 +1,12 @@
 import cv2
 import numpy as np
 from os import listdir
+import configFile as config
 
 
 def nothing(x):
     pass
 
-#def maprange(a, b, s):
-#    (a1, a2), (b1, b2) = a, b
-#    return b1 + ((s - a1) * (b2 - b1) / (a2 - a1))
-"""
-def detect_eyes(img, cascade=cv2.CascadeClassifier('haarcascade_eye.xml')):
-    gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    eyes = cascade.detectMultiScale(gray_frame, 1.3, 5)  # detect eyes
-    width = np.size(img, 1)  # get face frame width
-    height = np.size(img, 0)  # get face frame height
-    left_eye = []
-    left_eye_offset_x = 0
-    left_eye_offset_y = 0
-    right_eye = []
-    right_eye_offset_x = 0
-    right_eye_offset_y = 0
-    for (x, y, w, h) in eyes:
-        if y > height / 2:
-            pass
-        eyecenter = x + w / 2  # get the eye center
-        if eyecenter < width * 0.5:
-            left_eye = img[y:y + h, x:x + w]
-            left_eye_offset_x = x
-            left_eye_offset_y = y
-        else:
-            right_eye = img[y:y + h, x:x + w]
-            right_eye_offset_x = x
-            right_eye_offset_y = y
-    return left_eye, right_eye, left_eye_offset_x, left_eye_offset_y, right_eye_offset_x, right_eye_offset_y
-"""
 
 class IREyeTraking:
 
@@ -48,7 +20,7 @@ class IREyeTraking:
         cv2.imshow("IR-Image", np.zeros((1000, 1000, 3)))
 
         cv2.namedWindow("window2")
-        cv2.createTrackbar("Thresh", "IR-Image", 160, 255, nothing) #106
+        cv2.createTrackbar("Thresh", "IR-Image", config.IRET_THRESHOLD, 255, nothing) #106
 
     def __call__(self, image) -> (int, int, int, int):
         image = cv2.equalizeHist(image)
