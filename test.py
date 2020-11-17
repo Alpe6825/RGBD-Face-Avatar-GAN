@@ -43,7 +43,7 @@ def thread_osc(threadname, _queue):
 
 if __name__ == '__main__':
 
-    imageSize = 256
+    imageSize = config.IMAGE_SIZE
     flc = FacialLandmarkController()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -63,13 +63,13 @@ if __name__ == '__main__':
     exit()
     """
 
+    cap = cv2.VideoCapture(config.TEST_VIDEO)  # 0 for webcam or path to video
     camID = 0
-    cap = cv2.VideoCapture(camID)  # 0 for webcam or path to video
     while (cap.isOpened() == False):
         print("Error opening video stream or file")
-        camID += 1
         cap = cv2.VideoCapture(camID)
-    print("Camera ID:", camID)
+        camID += 1
+    print("Camera ID:", camID-1)
 
     if config.TEST_INPUT == "OSC":
         _queue = Queue()
@@ -90,8 +90,10 @@ if __name__ == '__main__':
         try:
             # FAN
             if config.TEST_INPUT == "Camera":
+                frame = car.cropAndResizeImageDatasetBased(frame, imageSize, np.array(
+                    [480, 480 + 248, 260, 260 +282]))
                 landmarks_temp = fan.create2DLandmarks(torch.Tensor(frame))
-                image, landmarks = car.cropAndResizeImageLandmarkBased(frame, imageSize, landmarks_temp, useCropBuffer=False)
+                image, landmarks = frame, landmarks_temp # car.cropAndResizeImageLandmarkBased(frame, imageSize, landmarks_temp, useCropBuffer=False)
                 landmarks = np.concatenate((landmarks, et.eyeTracking(image[:, :, 0:3].astype("uint8"))), axis=0)
 
             # OSC
@@ -105,8 +107,6 @@ if __name__ == '__main__':
 
             fourChannelHeatmap = hd.drawHeatmap(landmarks, imageSize, returnType="Tensor")
             fourChannelHeatmap = (fourChannelHeatmap - 127.5) / 127.5
-
-            # print(fourChannelHeatmap[:,0].unsqueeze(0).unsqueeze(0).shape) [0].unsqueeze(0)
 
             outputTensor = netG(fourChannelHeatmap[0].unsqueeze(0).unsqueeze(0).to(device)) #loaded.forward(fourChannelHeatmap.unsqueeze(0)) #
             #outputTensor = loaded_1.forward(fourChannelHeatmap[0].unsqueeze(0).unsqueeze(0).to(device))  #

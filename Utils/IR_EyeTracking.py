@@ -17,7 +17,7 @@ class IREyeTraking:
         self.h = _h
 
         cv2.namedWindow("IR-Image")
-        cv2.imshow("IR-Image", np.zeros((1000, 1000, 3)))
+        cv2.imshow("IR-Image", np.zeros((1440, 2560, 3)))
 
         cv2.namedWindow("window2")
         cv2.createTrackbar("Thresh", "IR-Image", config.IRET_THRESHOLD, 255, nothing) #106
@@ -56,7 +56,7 @@ class IREyeTraking:
             cv2.rectangle(roi, (x1, y1), (x1 + w1, y1 + h1), (0, 255, 0), 2)
 
             y1 += self.y + int(h1 / 2)
-            x1 += self.x + w1 - 15
+            x1 += self.x + w1 - 15*2
 
             image[y1 - 3:y1 + 3, x1 - 3:x1 + 3] = np.array([0, 255, 0])
 
