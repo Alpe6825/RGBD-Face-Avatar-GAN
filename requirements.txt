@@ -2,7 +2,7 @@ numpy==1.18.3
 matplotlib==3.2.1
 opencv-python==4.2.0.34
 python-osc==1.7.4
-Pillow == 7.2
+Pillow == 9.0.1
 open3D
 tqdm
 face-alignment
